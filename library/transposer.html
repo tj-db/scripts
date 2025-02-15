@@ -1,1 +1,185 @@
-<!DOCTYPE html> <html> <head>     <title>???</title> <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"> <!-- Add this line to disable zooming -->     <style>         body {             background-color: #000;             color: #fff;             font-family: Arial, sans-serif;             text-align: center;             height: 100%;             margin: 0;             display: flex;             flex-direction: column;             justify-content: center;             align-items: center;         }          h1 {         user-select: none;         -webkit-tap-highlight-color: transparent; position: fixed; top: 1%;             font-size: 25vh;             margin: 22px 0;     opacity: 0.2; transition: opacity 3.3s; text-align: center;         }      h1:hover {     opacity: 0.9; }  textarea {     position: fixed;     top: 33%;     width: 66%;     height: 22%;     font-size: 6vh;     padding: 3vh;     border: 11px solid #ccc;     margin: 4vh 0;     opacity: 0.4;     text-align: center;     border-radius: 33px;     line-height: 11vh; }         label { position: fixed; top: 90%;             font-size: 2vh;         }          input[type="number"] {         user-select: none;         -webkit-tap-highlight-color: transparent; position: fixed; top: 71%;             width: 8%;             font-size: 3vh;             padding: 2vh;     border: 11px solid #ccc;     border-radius: 22px;     opacity: 0.4;     text-align: center;         }          #output {         -webkit-tap-highlight-color: transparent; position: fixed; top: 84%;             font-size: 4.4vh;             margin: 2vh 0;         }  .arrow {         user-select: none;         -webkit-tap-highlight-color: transparent;     position: absolute;     width: 60%;     height: 5vh;     display: flex;     justify-content: center;     align-items: center;     cursor: pointer;     user-select: none;     font-size: 3vh;     color: #fff;     top: 73%; opacity: 0.4; }  #decrement {     left: 0; }  #increment {     right: 0; }  #decrement::before {     content: '?'; }  #increment::before {     content: '?'; }  .arrow:hover::before {     opacity: 0.4; }        </style> </head> <body> <div style="display: flex; justify-content: center;">     <h1>         <a href="https://pos.snapscan.io/qr/w1hRjQUu" target="_blank" style="text-align: center; color: #fff; text-decoration: none;">             ?         </a>     </h1> </div>            <textarea id="melody" placeholder=" ? ? ? " oninput="transposeMelody()"></textarea>     <div class="arrow" id="decrement" onclick="decrementValue()"></div>     <label for="transpose"></label>     <input type="number" id="transpose" value="0" oninput="transposeMelody()">     <div class="arrow" id="increment" onclick="incrementValue()"></div>     <div id="output"></div>          <script>  function decrementValue() {     var input = document.getElementById("transpose");     input.value = parseInt(input.value) - 1;     transposeMelody(); }  function incrementValue() {     var input = document.getElementById("transpose");     input.value = parseInt(input.value) + 1;     transposeMelody(); }           function transposeMelody() {             var melody = document.getElementById("melody").value;             var transposeValue = parseInt(document.getElementById("transpose").value);             var transposedMelody = transposeNotesAndChords(melody, transposeValue);             document.getElementById("output").textContent = transposedMelody;         }                           function transposeNotesAndChords(melody, semitones) {             var regex = /([A-G](?:#|b)?)(m|7|9|11|13)?/g;                          var transposedMelody = melody.replace(regex, function(match, note, modifier) {                 return transposeSingleNoteOrChord(note, modifier, semitones);             });                          return transposedMelody;         }                  function transposeSingleNoteOrChord(note, modifier, semitones) {             var notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];             var index = notes.indexOf(note);             if (index !== -1) {                 var transposedIndex = (index + semitones) % 12;                 if (transposedIndex < 0) {                     transposedIndex += 12;                 }                 var transposedNote = notes[transposedIndex];                 return transposedNote + (modifier || '');             }             return note + (modifier || '');         }     </script> </body> </html>
+<!DOCTYPE html>
+<html>
+<head>
+    <title>♫♪♬</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"> <!-- Add this line to disable zooming -->
+    <style>
+        body {
+            background-color: #000;
+            color: #fff;
+            font-family: Arial, sans-serif;
+            text-align: center;
+            height: 100%;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        h1 {
+        user-select: none;
+        -webkit-tap-highlight-color: transparent;
+position: fixed;
+top: 1%;
+            font-size: 25vh;
+            margin: 22px 0;
+    opacity: 0.2;
+transition: opacity 3.3s;
+text-align: center;
+        }
+
+    h1:hover {
+    opacity: 0.9;
+}
+
+textarea {
+    position: fixed;
+    top: 33%;
+    width: 66%;
+    height: 22%;
+    font-size: 6vh;
+    padding: 3vh;
+    border: 11px solid #ccc;
+    margin: 4vh 0;
+    opacity: 0.4;
+    text-align: center;
+    border-radius: 33px;
+    line-height: 11vh;
+}
+        label {
+position: fixed;
+top: 90%;
+            font-size: 2vh;
+        }
+
+        input[type="number"] {
+        user-select: none;
+        -webkit-tap-highlight-color: transparent;
+position: fixed;
+top: 71%;
+            width: 8%;
+            font-size: 3vh;
+            padding: 2vh;
+    border: 11px solid #ccc;
+    border-radius: 22px;
+    opacity: 0.4;
+    text-align: center;
+        }
+
+        #output {
+        -webkit-tap-highlight-color: transparent;
+position: fixed;
+top: 84%;
+            font-size: 4.4vh;
+            margin: 2vh 0;
+        }
+
+.arrow {
+        user-select: none;
+        -webkit-tap-highlight-color: transparent;
+    position: absolute;
+    width: 60%;
+    height: 5vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+    font-size: 3vh;
+    color: #fff;
+    top: 73%;
+opacity: 0.4;
+}
+
+#decrement {
+    left: 0;
+}
+
+#increment {
+    right: 0;
+}
+
+#decrement::before {
+    content: '▼';
+}
+
+#increment::before {
+    content: '▲';
+}
+
+.arrow:hover::before {
+    opacity: 0.4;
+}
+
+
+
+    </style>
+</head>
+<body>
+<div style="display: flex; justify-content: center;">
+    <h1>
+        <a href="https://pos.snapscan.io/qr/w1hRjQUu" target="_blank" style="text-align: center; color: #fff; text-decoration: none;">
+            ♬
+        </a>
+    </h1>
+</div>
+
+
+    
+    <textarea id="melody" placeholder=" ♫ ♪ ♬ " oninput="transposeMelody()"></textarea>
+    <div class="arrow" id="decrement" onclick="decrementValue()"></div>
+    <label for="transpose"></label>
+    <input type="number" id="transpose" value="0" oninput="transposeMelody()">
+    <div class="arrow" id="increment" onclick="incrementValue()"></div>
+    <div id="output"></div>
+    
+    <script>
+
+function decrementValue() {
+    var input = document.getElementById("transpose");
+    input.value = parseInt(input.value) - 1;
+    transposeMelody();
+}
+
+function incrementValue() {
+    var input = document.getElementById("transpose");
+    input.value = parseInt(input.value) + 1;
+    transposeMelody();
+}
+
+
+        function transposeMelody() {
+            var melody = document.getElementById("melody").value;
+            var transposeValue = parseInt(document.getElementById("transpose").value);
+            var transposedMelody = transposeNotesAndChords(melody, transposeValue);
+            document.getElementById("output").textContent = transposedMelody;
+        }
+        
+        
+        function transposeNotesAndChords(melody, semitones) {
+            var regex = /([A-G](?:#|b)?)(m|7|9|11|13)?/g;
+            
+            var transposedMelody = melody.replace(regex, function(match, note, modifier) {
+                return transposeSingleNoteOrChord(note, modifier, semitones);
+            });
+            
+            return transposedMelody;
+        }
+        
+        function transposeSingleNoteOrChord(note, modifier, semitones) {
+            var notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+            var index = notes.indexOf(note);
+            if (index !== -1) {
+                var transposedIndex = (index + semitones) % 12;
+                if (transposedIndex < 0) {
+                    transposedIndex += 12;
+                }
+                var transposedNote = notes[transposedIndex];
+                return transposedNote + (modifier || '');
+            }
+            return note + (modifier || '');
+        }
+    </script>
+</body>
+</html>
