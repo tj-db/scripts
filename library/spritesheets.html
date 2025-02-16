@@ -118,6 +118,7 @@
             </div>
             <pre id="cssCode" style="display:none;"></pre>
         </div>
+        <button id="deleteBtn">Delete Frame</button>
     </div>
 
     <script>
@@ -294,6 +295,24 @@
                 expandGridIfNeeded(x, y);
             }
         });
+
+        const deleteBtn = document.getElementById('deleteBtn');
+
+deleteBtn.addEventListener('click', () => {
+    if (!selectedSprite) return;
+
+    const index = imageElements.indexOf(selectedSprite);
+
+    selectedSprite.remove();
+
+    imageElements.splice(index, 1);
+    positions.splice(index, 1);
+    names.splice(index, 1);
+
+    spriteDetails.style.display = 'none';
+
+    selectedSprite = null;
+});
     </script>
 </body>
 </html>
