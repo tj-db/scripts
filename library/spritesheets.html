@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SPRITESHEETS</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #f5f5f5;
+        }
+
+        #container {
+            display: flex;
+            flex-direction: row;
+            margin-top: 20px;
+            gap: 20px;
+        }
+
+        #gridWrapper {
+            position: relative;
+            overflow: auto;
+            border: 1px solid #ddd;
+            background-color: #f0f0f0;
+            border-radius: 8px;
+            width: 800px;
+            height: 600px;
+        }
+
+        #grid {
+            position: relative;
+            display: block;
+            background-size: 100px 100px;
+            background-image: linear-gradient(to right, #ddd 1px, transparent 1px),
+                              linear-gradient(to bottom, #ddd 1px, transparent 1px);
+        }
+
+        .sprite {
+            position: absolute;
+            width: 100px;
+            height: 100px;
+            cursor: grab;
+            border: 1px solid transparent;
+        }
+
+        .sprite.selected {
+            border-color: #007BFF;
+        }
+
+        #tools {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 10px;
+        }
+
+        #spriteDetails {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            background-color: white;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            width: 300px;
+        }
+
+        label {
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 8px;
+            font-size: 14px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 14px;
+            cursor: pointer;
+            margin-top: 5px;
+        }
+
+        #cssCode {
+            background-color: #f4f4f4;
+            padding: 10px;
+            width: 100%;
+            margin-top: 10px;
+            white-space: pre-wrap;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            overflow-x: auto;
+            max-height: 200px;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="gridWrapper">
+            <div id="grid"></div>
+        </div>
+        <div id="tools">
+            <input type="file" id="upload" multiple />
+            <button id="downloadBtn">Download Spritesheet</button>
+            <button id="showCssBtn">Show CSS</button>
+            <div id="spriteDetails" style="display: none;">
+                <label for="spriteName">Frame Name:</label>
+                <input type="text" id="spriteName" placeholder="Enter frame name and press Enter" />
+            </div>
+            <pre id="cssCode" style="display:none;"></pre>
+        </div>
+    </div>
+
+    <script>
+        const gridWrapper = document.getElementById('gridWrapper');
+        const grid = document.getElementById('grid');
+        const uploadInput = document.getElementById('upload');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const showCssBtn = document.getElementById('showCssBtn');
+        const spriteDetails = document.getElementById('spriteDetails');
+        const spriteNameInput = document.getElementById('spriteName');
+        const cssCode = document.getElementById('cssCode');
+        const tileSize = 100;
+
+        let imageElements = [];
+        let positions = [];
+        let names = [];
+        let selectedSprite = null;
+
+        uploadInput.addEventListener('change', (event) => {
+            const files = event.target.files;
+            let currentX = 0;
+            for (const file of files) {
+                if (file.type.startsWith('image/png')) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const img = new Image();
+                        img.src = e.target.result;
+                        img.onload = () => {
+                            const imgElement = createImageElement(img);
+                            grid.appendChild(imgElement);
+                            imageElements.push(imgElement);
+
+                            // Use the original file name as the default frame name
+                            const fileName = file.name.replace(/\.[^/.]+$/, '');
+                            names.push(fileName);
+
+                            updateSpritePosition(imgElement, currentX, 0);
+                            expandGridIfNeeded(currentX, 0);
+                            currentX += tileSize;
+                        };
+                    };
+                    reader.readAsDataURL(file);
+                }
+            }
+        });
+
+        function createImageElement(img) {
+            const imgElement = document.createElement('img');
+            imgElement.src = img.src;
+            imgElement.classList.add('sprite');
+            imgElement.width = tileSize;
+            imgElement.height = tileSize;
+
+            let offsetX, offsetY, isDragging = false;
+
+            imgElement.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                offsetX = e.clientX - imgElement.offsetLeft;
+                offsetY = e.clientY - imgElement.offsetTop;
+                selectSprite(imgElement);
+                imgElement.style.cursor = 'grabbing';
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+
+                const x = Math.floor((e.clientX - gridWrapper.offsetLeft - offsetX) / tileSize) * tileSize;
+                const y = Math.floor((e.clientY - gridWrapper.offsetTop - offsetY) / tileSize) * tileSize;
+
+                if (!isTileOccupied(x, y) || selectedSprite === imgElement) {
+                    updateSpritePosition(imgElement, x, y);
+                    expandGridIfNeeded(x, y);
+                }
+            });
+
+            document.addEventListener('mouseup', () => {
+                isDragging = false;
+                imgElement.style.cursor = 'grab';
+            });
+
+            return imgElement;
+        }
+
+        function selectSprite(sprite) {
+            if (selectedSprite) {
+                selectedSprite.classList.remove('selected');
+            }
+            selectedSprite = sprite;
+            sprite.classList.add('selected');
+
+            const index = imageElements.indexOf(sprite);
+            spriteNameInput.value = names[index];
+            spriteDetails.style.display = 'block';
+
+            spriteNameInput.onkeydown = (e) => {
+                if (e.key === 'Enter') {
+                    names[index] = spriteNameInput.value.trim();
+                }
+            };
+        }
+
+        function updateSpritePosition(imgElement, x, y) {
+            const index = imageElements.indexOf(imgElement);
+            imgElement.style.left = `${x}px`;
+            imgElement.style.top = `${y}px`;
+            positions[index] = { x, y };
+        }
+
+        function isTileOccupied(x, y) {
+            return positions.some(pos => pos.x === x && pos.y === y);
+        }
+
+        function expandGridIfNeeded(x, y) {
+            const gridWidth = Math.max(grid.clientWidth, x + tileSize);
+            const gridHeight = Math.max(grid.clientHeight, y + tileSize);
+            grid.style.width = `${gridWidth}px`;
+            grid.style.height = `${gridHeight}px`;
+        }
+
+        showCssBtn.addEventListener('click', () => {
+            let css = '';
+            positions.forEach((pos, index) => {
+                css += `.${names[index]} {\n`;
+                css += `  background-position: -${pos.x}px -${pos.y}px;\n`;
+                css += `  width: ${tileSize}px;\n`;
+                css += `  height: ${tileSize}px;\n`;
+                css += `}\n\n`;
+            });
+            cssCode.textContent = css;
+            cssCode.style.display = 'block';
+        });
+
+        downloadBtn.addEventListener('click', () => {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+
+            const gridWidth = Math.max(...positions.map(pos => pos.x)) + tileSize;
+            const gridHeight = Math.max(...positions.map(pos => pos.y)) + tileSize;
+
+            canvas.width = gridWidth;
+            canvas.height = gridHeight;
+
+            positions.forEach((pos, index) => {
+                const img = new Image();
+                img.src = imageElements[index].src;
+                img.onload = () => {
+                    ctx.drawImage(img, pos.x, pos.y, tileSize, tileSize);
+                    if (index === positions.length - 1) {
+                        const link = document.createElement('a');
+                        link.href = canvas.toDataURL('image/png');
+                        link.download = 'spritesheet.png';
+                        link.click();
+                    }
+                };
+            });
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (!selectedSprite) return;
+
+            const index = imageElements.indexOf(selectedSprite);
+            let { x, y } = positions[index];
+
+            switch (e.key) {
+                case 'ArrowUp': y -= tileSize; break;
+                case 'ArrowDown': y += tileSize; break;
+                case 'ArrowLeft': x -= tileSize; break;
+                case 'ArrowRight': x += tileSize; break;
+                default: return;
+            }
+
+            if (!isTileOccupied(x, y)) {
+                updateSpritePosition(selectedSprite, x, y);
+                expandGridIfNeeded(x, y);
+            }
+        });
+    </script>
+</body>
+</html>
