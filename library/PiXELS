@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PiXELS</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background-color: #f4f4f4;
+        }
+        h1 {
+            font-family: 'Press Start 2P', cursive;
+            font-size: 48px;
+            margin: 44px 0;
+        }
+        .toolbar {
+            margin-bottom: 10px;
+        }
+        button, input {
+            margin: 5px;
+            padding: 10px;
+            font-size: 16px;
+        }
+        .canvas-container {
+            position: relative;
+            display: inline-block;
+            border: 1px solid black;
+            width: 640px;
+            height: 640px;
+            margin: 0 auto;
+        }
+
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            background-color: transparent;
+            image-rendering: pixelated;
+        }
+
+        #gridCanvas {
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>PiXELS</h1>
+
+    <div class="toolbar">
+        <input type="color" id="colorPicker">
+        <input type="range" id="alphaSlider" min="0" max="1" step="0.01" value="1">
+        <span id="alphaValue">1.00</span>
+        <button id="pencilTool"><i class="fas fa-pencil-alt"></i></button>
+        <button id="eraserTool"><i class="fas fa-eraser"></i></button>
+        <button id="addLayer"><i class="fas fa-plus-circle"></i></button>
+        <button id="removeLayer"><i class="fas fa-minus-circle"></i></button>
+        <button id="exportImage"><i class="fas fa-download"></i></button>
+        <button id="undoButton"><i class="fas fa-undo"></i></button>
+        <button id="redoButton"><i class="fas fa-redo"></i></button>
+        <select id="layerSelect"></select>
+    </div>
+
+    <div class="canvas-container" id="canvasContainer">
+        <canvas id="gridCanvas"></canvas>
+    </div>
+
+    <script>
+        const pixelSize = 20;
+        const rows = 32;
+        const cols = 32;
+        const canvasContainer = document.getElementById("canvasContainer");
+        const colorPicker = document.getElementById("colorPicker");
+        const alphaSlider = document.getElementById("alphaSlider");
+        const alphaValue = document.getElementById("alphaValue");
+        const pencilTool = document.getElementById("pencilTool");
+        const eraserTool = document.getElementById("eraserTool");
+        const addLayer = document.getElementById("addLayer");
+        const removeLayer = document.getElementById("removeLayer");
+        const exportImage = document.getElementById("exportImage");
+        const layerSelect = document.getElementById("layerSelect");
+        const undoButton = document.getElementById("undoButton");
+        const redoButton = document.getElementById("redoButton");
+
+        let layers = [];
+        let currentLayer = null;
+        let isDrawing = false;
+        let isErasing = false;
+        let currentColor = "rgba(0, 0, 0, 1)";
+        let undoHistory = [];
+        let redoHistory = [];
+
+        function createLayer() {
+            const name = prompt("Enter a name for the new layer:", `Layer ${layers.length + 1}`);
+            const layerName = name ? name : `Layer ${layers.length + 1}`;
+
+            const canvas = document.createElement("canvas");
+            canvas.width = cols * pixelSize;
+            canvas.height = rows * pixelSize;
+            canvas.style.zIndex = layers.length;
+            canvasContainer.appendChild(canvas);
+
+            const ctx = canvas.getContext("2d");
+            layers.push({ name: layerName, canvas, ctx });
+
+            const option = document.createElement("option");
+            option.value = layers.length - 1;
+            option.textContent = layerName;
+            layerSelect.appendChild(option);
+            layerSelect.value = layers.length - 1;
+            switchLayer();
+        }
+
+        function switchLayer() {
+            const index = layerSelect.value;
+            currentLayer = layers[index];
+            console.log("Switched to layer:", currentLayer.name);
+        }
+
+        function drawPixel(x, y) {
+            if (!currentLayer) return;
+            const { ctx } = currentLayer;
+            ctx.fillStyle = isErasing ? "rgba(255, 255, 255, 0)" : currentColor;
+            ctx.clearRect(x * pixelSize, y * pixelSize, pixelSize, pixelSize);
+            ctx.fillRect(x * pixelSize, y * pixelSize, pixelSize, pixelSize);
+        }
+
+        function setupGrid() {
+            const gridCanvas = document.getElementById("gridCanvas");
+            gridCanvas.width = cols * pixelSize;
+            gridCanvas.height = rows * pixelSize;
+            const ctx = gridCanvas.getContext("2d");
+
+            ctx.strokeStyle = "rgba(0, 0, 0, 0.1)";
+            for (let x = 0; x <= cols; x++) {
+                ctx.beginPath();
+                ctx.moveTo(x * pixelSize, 0);
+                ctx.lineTo(x * pixelSize, rows * pixelSize);
+                ctx.stroke();
+            }
+            for (let y = 0; y <= rows; y++) {
+                ctx.beginPath();
+                ctx.moveTo(0, y * pixelSize);
+                ctx.lineTo(cols * pixelSize, y * pixelSize);
+                ctx.stroke();
+            }
+        }
+
+        function mergeLayers() {
+            const mergedCanvas = document.createElement("canvas");
+            mergedCanvas.width = cols * pixelSize;
+            mergedCanvas.height = rows * pixelSize;
+            const mergedCtx = mergedCanvas.getContext("2d");
+
+            layers.forEach(layer => {
+                mergedCtx.drawImage(layer.canvas, 0, 0);
+            });
+
+            return mergedCanvas;
+        }
+
+        function exportArtwork() {
+            const mergedCanvas = mergeLayers();
+            const link = document.createElement("a");
+            link.download = "pixel-art.png";
+            link.href = mergedCanvas.toDataURL();
+            link.click();
+        }
+
+        function saveStateForUndo() {
+            if (!currentLayer) return;
+            const canvasData = currentLayer.canvas.toDataURL();
+            console.log("Saving state for undo:", canvasData);
+            undoHistory.push(canvasData);
+            redoHistory = [];
+        }
+
+        function undo() {
+            if (undoHistory.length > 0) {
+                const lastState = undoHistory.pop();
+                console.log("Undo action triggered. Restoring state:", lastState);
+                redoHistory.push(currentLayer.canvas.toDataURL());
+                const img = new Image();
+                img.src = lastState;
+                img.onload = () => {
+                    currentLayer.ctx.clearRect(0, 0, currentLayer.canvas.width, currentLayer.canvas.height);
+                    currentLayer.ctx.drawImage(img, 0, 0);
+                };
+            } else {
+                console.log("No more states to undo.");
+            }
+        }
+
+        function redo() {
+            if (redoHistory.length > 0) {
+                const lastState = redoHistory.pop();
+                console.log("Redo action triggered. Restoring state:", lastState);
+                undoHistory.push(currentLayer.canvas.toDataURL());
+                const img = new Image();
+                img.src = lastState;
+                img.onload = () => {
+                    currentLayer.ctx.clearRect(0, 0, currentLayer.canvas.width, currentLayer.canvas.height);
+                    currentLayer.ctx.drawImage(img, 0, 0);
+                };
+            } else {
+                console.log("No more states to redo.");
+            }
+        }
+
+        canvasContainer.addEventListener("mousedown", (e) => {
+            isDrawing = true;
+            saveStateForUndo();
+            const rect = canvasContainer.getBoundingClientRect();
+            const x = Math.floor((e.clientX - rect.left) / pixelSize);
+            const y = Math.floor((e.clientY - rect.top) / pixelSize);
+            drawPixel(x, y);
+        });
+
+        canvasContainer.addEventListener("mousemove", (e) => {
+            if (!isDrawing) return;
+            const rect = canvasContainer.getBoundingClientRect();
+            const x = Math.floor((e.clientX - rect.left) / pixelSize);
+            const y = Math.floor((e.clientY - rect.top) / pixelSize);
+            drawPixel(x, y);
+        });
+
+        document.addEventListener("mouseup", () => isDrawing = false);
+
+        colorPicker.addEventListener("input", updateColor);
+        alphaSlider.addEventListener("input", updateColor);
+
+        function updateColor() {
+            const rgb = hexToRgb(colorPicker.value);
+            const alpha = alphaSlider.value;
+            currentColor = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`;
+            alphaValue.textContent = alpha;
+            isErasing = false;
+        }
+
+        function hexToRgb(hex) {
+            const bigint = parseInt(hex.slice(1), 16);
+            return {
+                r: (bigint >> 16) & 255,
+                g: (bigint >> 8) & 255,
+                b: bigint & 255,
+            };
+        }
+
+        pencilTool.addEventListener("click", () => isErasing = false);
+        eraserTool.addEventListener("click", () => isErasing = true);
+
+        addLayer.addEventListener("click", createLayer);
+        removeLayer.addEventListener("click", () => {
+            if (layers.length > 1) {
+                const index = layerSelect.value;
+                canvasContainer.removeChild(layers[index].canvas);
+                layers.splice(index, 1);
+                layerSelect.remove(index);
+                layerSelect.value = layers.length - 1;
+                switchLayer();
+            }
+        });
+
+        exportImage.addEventListener("click", exportArtwork);
+
+        layerSelect.addEventListener("change", switchLayer);
+
+        undoButton.addEventListener("click", undo);
+        redoButton.addEventListener("click", redo);
+
+        setupGrid();
+        createLayer();
+
+        canvasContainer.addEventListener("touchstart", (e) => {
+            e.preventDefault();
+            isDrawing = true;
+            saveStateForUndo();
+            const rect = canvasContainer.getBoundingClientRect();
+            const x = Math.floor((e.touches[0].clientX - rect.left) / pixelSize);
+            const y = Math.floor((e.touches[0].clientY - rect.top) / pixelSize);
+            drawPixel(x, y);
+        }, { passive: false });
+
+        canvasContainer.addEventListener("touchmove", (e) => {
+            e.preventDefault();
+            if (!isDrawing) return;
+            const rect = canvasContainer.getBoundingClientRect();
+            const x = Math.floor((e.touches[0].clientX - rect.left) / pixelSize);
+            const y = Math.floor((e.touches[0].clientY - rect.top) / pixelSize);
+            drawPixel(x, y);
+        }, { passive: false });
+
+        document.addEventListener("touchend", () => isDrawing = false);
+    </script>
+</body>
+</html>
