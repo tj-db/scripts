@@ -36,15 +36,7 @@
 
     <script>
         const { createFFmpeg, fetchFile } = FFmpeg;
-        const ffmpeg = createFFmpeg({
-            log: true,
-            progress: (progress) => {
-                const progressBar = document.getElementById("progressBar");
-                const percent = (progress.ratio * 100).toFixed(2);
-                progressBar.style.width = percent + "%";
-                progressBar.textContent = percent + "%";
-            }
-        });
+        const ffmpeg = createFFmpeg({ log: true });
 
         document.getElementById('processButton').addEventListener('click', async () => {
             const fileInput = document.getElementById('videoInput');
@@ -55,22 +47,37 @@
             const file = fileInput.files[0];
 
             document.getElementById('progressContainer').style.display = "block";
-            await ffmpeg.load();
-            document.getElementById('progressContainer').style.display = "none";
 
-            ffmpeg.FS('writeFile', 'input.mp4', await fetchFile(file));
+            try {
+                await ffmpeg.load({
+                    progress: (progress) => {
+                        const progressBar = document.getElementById("progressBar");
+                        const percent = (progress.ratio * 100).toFixed(2);
+                        progressBar.style.width = percent + "%";
+                        progressBar.textContent = percent + "%";
+                    }
+                });
 
-            let cmd = "[0:v]";
-            for (let i = 0; i < 10; i++) {
-                cmd += `reverse[v${i}];[0:v][v${i}]concat=n=2:v=1:a=0[vout]`;
+                document.getElementById('progressContainer').style.display = "none";
+
+                ffmpeg.FS('writeFile', 'input.mp4', await fetchFile(file));
+
+                let cmd = "[0:v]";
+                for (let i = 0; i < 10; i++) {
+                    cmd += `reverse[v${i}];[0:v][v${i}]concat=n=2:v=1:a=0[vout]`;
+                }
+
+                await ffmpeg.run('-filter_complex', cmd, '-map', '[vout]', 'output.mp4');
+
+                const data = ffmpeg.FS('readFile', 'output.mp4');
+                const videoBlob = new Blob([data.buffer], { type: 'video/mp4' });
+                const videoUrl = URL.createObjectURL(videoBlob);
+                document.getElementById('outputVideo').src = videoUrl;
+
+            } catch (error) {
+                alert("Error loading FFmpeg or processing the video.");
+                console.error(error);
             }
-
-            await ffmpeg.run('-filter_complex', cmd, '-map', '[vout]', 'output.mp4');
-
-            const data = ffmpeg.FS('readFile', 'output.mp4');
-            const videoBlob = new Blob([data.buffer], { type: 'video/mp4' });
-            const videoUrl = URL.createObjectURL(videoBlob);
-            document.getElementById('outputVideo').src = videoUrl;
         });
     </script>
 </body>
