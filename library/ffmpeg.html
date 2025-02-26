@@ -4,20 +4,47 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Boomerang Video</title>
-    <!-- Use a reliable, stable version of FFmpeg.js -->
     <script src="https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@5.0.0/dist/ffmpeg.min.js"></script>
+    <style>
+        #progressContainer {
+            width: 100%;
+            background-color: #f3f3f3;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-top: 20px;
+        }
+
+        #progressBar {
+            width: 0;
+            height: 25px;
+            background-color: #4caf50;
+            text-align: center;
+            color: white;
+            line-height: 25px;
+            border-radius: 8px;
+        }
+    </style>
 </head>
 <body>
     <h1>Upload a Video to Create a Boomerang Effect</h1>
     <input type="file" id="videoInput" accept="video/mp4">
     <button id="processButton">Create Boomerang Video</button>
+    <div id="progressContainer" style="display: none;">
+        <div id="progressBar">0%</div>
+    </div>
     <video id="outputVideo" controls></video>
 
     <script>
-        const { createFFmpeg, fetchFile } = FFmpeg; // Ensure FFmpeg is referenced here
-
-        // Initialize the FFmpeg library
-        const ffmpeg = createFFmpeg({ log: true });
+        const { createFFmpeg, fetchFile } = FFmpeg;
+        const ffmpeg = createFFmpeg({
+            log: true,
+            progress: (progress) => {
+                const progressBar = document.getElementById("progressBar");
+                const percent = (progress.ratio * 100).toFixed(2);
+                progressBar.style.width = percent + "%";
+                progressBar.textContent = percent + "%";
+            }
+        });
 
         document.getElementById('processButton').addEventListener('click', async () => {
             const fileInput = document.getElementById('videoInput');
@@ -27,23 +54,19 @@
             }
             const file = fileInput.files[0];
 
-            // Load FFmpeg
+            document.getElementById('progressContainer').style.display = "block";
             await ffmpeg.load();
+            document.getElementById('progressContainer').style.display = "none";
 
-            // Load the video file into FFmpeg
             ffmpeg.FS('writeFile', 'input.mp4', await fetchFile(file));
 
-            // Create the boomerang effect (repeating the video 10 times)
-            let cmd = "[0:v]";  // Start with the original video
-
+            let cmd = "[0:v]";
             for (let i = 0; i < 10; i++) {
                 cmd += `reverse[v${i}];[0:v][v${i}]concat=n=2:v=1:a=0[vout]`;
             }
 
-            // Process the video with the boomerang effect
             await ffmpeg.run('-filter_complex', cmd, '-map', '[vout]', 'output.mp4');
 
-            // Retrieve the processed video and display it
             const data = ffmpeg.FS('readFile', 'output.mp4');
             const videoBlob = new Blob([data.buffer], { type: 'video/mp4' });
             const videoUrl = URL.createObjectURL(videoBlob);
