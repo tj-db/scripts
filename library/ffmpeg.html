@@ -68,12 +68,12 @@
             logContainer.scrollTop = logContainer.scrollHeight; // Auto-scroll to the bottom
         }
 
-        function loadFFmpeg() {
+        async function loadFFmpeg() {
             const script = document.createElement('script');
             script.src = "https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.11.2/dist/ffmpeg.min.js";
-            script.onload = function() {
+            script.onload = async function() {
                 logToUI("FFmpeg.js script loaded!");
-                initializeFFmpeg();
+                await initializeFFmpeg();
             };
             script.onerror = function() {
                 logToUI("Error loading FFmpeg.js script.");
@@ -82,29 +82,23 @@
             document.head.appendChild(script);
         }
 
-        function initializeFFmpeg() {
+        async function initializeFFmpeg() {
             logToUI("FFmpeg.js is available!");
             if (typeof FFmpeg === 'undefined') {
                 logToUI("FFmpeg.js is not available.");
                 showError("FFmpeg.js failed to load.");
                 return;
             }
-            logToUI("Loading FFmpeg core...");
-            loadFFmpegCore();
-        }
 
-        function loadFFmpegCore() {
+            logToUI("Loading FFmpeg core...");
             try {
-                ffmpeg.load().then(() => {
-                    logToUI("FFmpeg core loaded successfully!");
-                    setupUpload();
-                }).catch((error) => {
-                    logToUI("Error loading FFmpeg core: " + error);
-                    showError("Error loading FFmpeg core.");
-                });
+                // Initialize FFmpeg (use async/await for handling promises)
+                await FFmpeg.load();
+                logToUI("FFmpeg core loaded successfully!");
+                setupUpload();
             } catch (error) {
-                logToUI("Error initializing FFmpeg.js: " + error);
-                showError("Error initializing FFmpeg.js.");
+                logToUI("Error loading FFmpeg core: " + error);
+                showError("Error loading FFmpeg core.");
             }
         }
 
@@ -119,36 +113,32 @@
             });
         }
 
-        function processVideo(file) {
+        async function processVideo(file) {
             const reader = new FileReader();
-            reader.onload = function(event) {
+            reader.onload = async function(event) {
                 const videoData = new Uint8Array(event.target.result);
                 try {
                     // Write the video to FFmpeg's virtual filesystem
-                    ffmpeg.FS('writeFile', 'input.mp4', videoData);
+                    await FFmpeg.FS('writeFile', 'input.mp4', videoData);
                     logToUI("Video uploaded and ready for processing!");
 
                     // Start FFmpeg processing: Rename the video to output.mp4
                     logToUI("Processing video...");
-                    ffmpeg.run('-i', 'input.mp4', 'output.mp4').then(() => {
-                        logToUI("Video processed successfully!");
+                    await FFmpeg.run('-i', 'input.mp4', 'output.mp4');
+                    logToUI("Video processed successfully!");
 
-                        // Fetch the processed video and enable download
-                        const data = ffmpeg.FS('readFile', 'output.mp4');
-                        const videoBlob = new Blob([data.buffer], { type: 'video/mp4' });
-                        const videoUrl = URL.createObjectURL(videoBlob);
+                    // Fetch the processed video and enable download
+                    const data = await FFmpeg.FS('readFile', 'output.mp4');
+                    const videoBlob = new Blob([data.buffer], { type: 'video/mp4' });
+                    const videoUrl = URL.createObjectURL(videoBlob);
 
-                        const downloadLink = document.getElementById('download-link');
-                        const downloadButton = document.getElementById('download-btn');
-                        downloadButton.href = videoUrl;
-                        downloadLink.style.display = 'block'; // Show the download link
-                    }).catch((error) => {
-                        logToUI("Error processing video: " + error);
-                        showError("Error processing video.");
-                    });
+                    const downloadLink = document.getElementById('download-link');
+                    const downloadButton = document.getElementById('download-btn');
+                    downloadButton.href = videoUrl;
+                    downloadLink.style.display = 'block'; // Show the download link
                 } catch (error) {
-                    logToUI("Error writing video file to FFmpeg: " + error);
-                    showError("Error writing video file.");
+                    logToUI("Error processing video: " + error);
+                    showError("Error processing video.");
                 }
             };
             reader.onerror = function(error) {
