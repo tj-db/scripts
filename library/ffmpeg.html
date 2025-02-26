@@ -68,12 +68,12 @@
             logContainer.scrollTop = logContainer.scrollHeight; // Auto-scroll to the bottom
         }
 
-        async function loadFFmpeg() {
+        function loadFFmpeg() {
             const script = document.createElement('script');
             script.src = "https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.11.2/dist/ffmpeg.min.js";
-            script.onload = async function() {
+            script.onload = function() {
                 logToUI("FFmpeg.js script loaded!");
-                await initializeFFmpeg();
+                initializeFFmpeg();
             };
             script.onerror = function() {
                 logToUI("Error loading FFmpeg.js script.");
@@ -90,45 +90,47 @@
                 return;
             }
 
-            logToUI("Loading FFmpeg core...");
+            logToUI("Initializing FFmpeg...");
             try {
-                // Initialize FFmpeg (use async/await for handling promises)
-                await FFmpeg.load();
+                // Create an instance of the FFmpeg class from ffmpeg.wasm
+                const ffmpeg = FFmpeg.createFFmpeg({ log: true });
+                await ffmpeg.load(); // Load the FFmpeg core
                 logToUI("FFmpeg core loaded successfully!");
-                setupUpload();
+
+                setupUpload(ffmpeg); // Proceed with video upload and processing
             } catch (error) {
-                logToUI("Error loading FFmpeg core: " + error);
-                showError("Error loading FFmpeg core.");
+                logToUI("Error initializing FFmpeg core: " + error);
+                showError("Error initializing FFmpeg core.");
             }
         }
 
-        function setupUpload() {
+        function setupUpload(ffmpeg) {
             document.getElementById('upload-video').addEventListener('change', function(event) {
                 const file = event.target.files[0];
                 if (!file) {
                     return;
                 }
                 logToUI("Uploading video: " + file.name);
-                processVideo(file);
+                processVideo(ffmpeg, file);
             });
         }
 
-        async function processVideo(file) {
+        async function processVideo(ffmpeg, file) {
             const reader = new FileReader();
             reader.onload = async function(event) {
                 const videoData = new Uint8Array(event.target.result);
                 try {
                     // Write the video to FFmpeg's virtual filesystem
-                    await FFmpeg.FS('writeFile', 'input.mp4', videoData);
+                    await ffmpeg.FS('writeFile', 'input.mp4', videoData);
                     logToUI("Video uploaded and ready for processing!");
 
                     // Start FFmpeg processing: Rename the video to output.mp4
                     logToUI("Processing video...");
-                    await FFmpeg.run('-i', 'input.mp4', 'output.mp4');
+                    await ffmpeg.run('-i', 'input.mp4', 'output.mp4');
                     logToUI("Video processed successfully!");
 
                     // Fetch the processed video and enable download
-                    const data = await FFmpeg.FS('readFile', 'output.mp4');
+                    const data = await ffmpeg.FS('readFile', 'output.mp4');
                     const videoBlob = new Blob([data.buffer], { type: 'video/mp4' });
                     const videoUrl = URL.createObjectURL(videoBlob);
 
