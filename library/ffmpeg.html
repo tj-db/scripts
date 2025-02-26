@@ -3,178 +3,175 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FFmpeg.js Loading</title>
+    <title>FFmpeg.js Video Upload and Processing</title>
     <style>
         body {
             font-family: Arial, sans-serif;
             padding: 20px;
             background-color: #f4f4f4;
         }
+
+        #log-output {
+            background-color: #eee;
+            padding: 10px;
+            margin-top: 20px;
+            border-radius: 5px;
+            max-height: 300px;
+            overflow-y: scroll;
+        }
+
+        #log-output div {
+            margin-bottom: 5px;
+        }
+
         .message {
             margin: 10px 0;
         }
-        #upload-section {
-            display: none;
-        }
-        #log-output {
+
+        #upload-form {
             margin-top: 20px;
-            padding: 10px;
-            background-color: #f0f0f0;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            font-family: monospace;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            height: 200px;
-            overflow-y: scroll;
-            cursor: pointer;
+        }
+
+        #download-link {
+            display: none;
+            margin-top: 20px;
         }
     </style>
 </head>
 <body>
 
-    <h1>FFmpeg.js Loading</h1>
+    <h1>FFmpeg.js Video Upload and Processing</h1>
 
-    <div id="messages">
-        <div class="message" id="status-message">Loading FFmpeg.js...</div>
+    <div id="status-message" class="message">Loading FFmpeg.js...</div>
+
+    <!-- File Upload Form -->
+    <div id="upload-form">
+        <input type="file" id="upload-video" accept="video/*">
     </div>
 
-    <!-- Upload Section -->
-    <div id="upload-section">
-        <input type="file" id="upload-file" accept="video/mp4">
-        <button id="download-button" style="display:none;">Download Renamed Video</button>
-        <video id="renamed-video" controls style="display:none; width: 100%;"></video>
+    <!-- Download Link -->
+    <div id="download-link">
+        <a href="#" id="download-btn" download="output.mp4">Download Processed Video</a>
     </div>
 
-    <!-- Log Output -->
-    <div id="log-output">Click here to copy logs</div>
-<script>
-    // Capture console logs and errors and display them in the UI
-    function captureConsole() {
-        const originalConsoleLog = console.log;
-        const originalConsoleError = console.error;
-        const logOutputDiv = document.getElementById('log-output');
-        
-        console.log = function(message) {
-            logOutputDiv.innerText += `[LOG] ${message}\n`;
-            originalConsoleLog.apply(console, arguments);
-        };
+    <!-- Logs Output -->
+    <div id="log-output">
+        <div>[LOG] Loading FFmpeg.js...</div>
+    </div>
 
-        console.error = function(message) {
-            logOutputDiv.innerText += `[ERROR] ${message}\n`;
-            originalConsoleError.apply(console, arguments);
-        };
-    }
-
-    function loadFFmpeg() {
-        const script = document.createElement('script');
-        script.src = "https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.11.2/dist/ffmpeg.min.js";
-        
-        script.onload = function() {
-            console.log("FFmpeg.js script loaded!");
-            document.getElementById('status-message').innerText = "FFmpeg.js Loaded Successfully!";
-            
-            // Try to initialize FFmpeg
-            if (typeof FFmpeg !== 'undefined') {
-                console.log("FFmpeg.js is available!");
-                document.getElementById('upload-section').style.display = 'block'; // Show upload section
-            } else {
-                console.error("FFmpeg.js failed to initialize.");
-                document.getElementById('status-message').innerText = "FFmpeg.js failed to initialize.";
-            }
-        };
-        
-        script.onerror = function(error) {
-            console.error("Failed to load FFmpeg.js:", error);
-            document.getElementById('status-message').innerText = "Failed to load FFmpeg.js. Please check your network connection or try again.";
-        };
-
-        document.head.appendChild(script);
-    }
-
-    function renameVideo(file) {
-        const { createFFmpeg, fetchFile } = FFmpeg;
-        
-        if (typeof FFmpeg === 'undefined') {
-            console.error("FFmpeg is not defined or initialized properly.");
-            document.getElementById('status-message').innerText = "FFmpeg initialization failed. Please try again.";
-            return;
+    <script>
+        function logToUI(message) {
+            const logContainer = document.getElementById('log-output');
+            const newLog = document.createElement('div');
+            newLog.textContent = message;
+            logContainer.appendChild(newLog);
+            logContainer.scrollTop = logContainer.scrollHeight; // Auto-scroll to the bottom
         }
 
-        const ffmpeg = createFFmpeg({ log: true });
-
-        // Load FFmpeg.js
-        ffmpeg.load().then(() => {
-            console.log("FFmpeg loaded and ready to use.");
-
-            const reader = new FileReader();
-
-            reader.onload = function(event) {
-                const videoData = event.target.result;
-                const videoBlob = new Blob([videoData], { type: 'video/mp4' });
-                const videoUrl = URL.createObjectURL(videoBlob);
-
-                const fileName = "output.mp4"; // Renamed file name
-
-                // Write the file to FFmpeg virtual filesystem
-                ffmpeg.FS('writeFile', file.name, new Uint8Array(videoData));
-
-                // Rename the video (copy the file to a new name)
-                ffmpeg.run('-i', file.name, fileName).then(() => {
-                    const output = ffmpeg.FS('readFile', fileName);
-                    const outputBlob = new Blob([output.buffer], { type: 'video/mp4' });
-                    const outputUrl = URL.createObjectURL(outputBlob);
-
-                    // Provide the renamed video for playback
-                    const videoElement = document.getElementById('renamed-video');
-                    videoElement.src = outputUrl;
-                    videoElement.style.display = 'block';
-
-                    // Provide download link
-                    const downloadLink = document.getElementById('download-button');
-                    downloadLink.href = outputUrl;
-                    downloadLink.download = fileName;
-                    downloadLink.style.display = 'inline-block';
-                }).catch(err => {
-                    console.error("Error renaming video:", err);
-                    document.getElementById('status-message').innerText = "Error during video processing. Please try again.";
-                });
+        function loadFFmpeg() {
+            const script = document.createElement('script');
+            script.src = "https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.11.2/dist/ffmpeg.min.js";
+            script.onload = function() {
+                logToUI("FFmpeg.js script loaded!");
+                initializeFFmpeg();
             };
+            script.onerror = function() {
+                logToUI("Error loading FFmpeg.js script.");
+                showError("Error loading FFmpeg.js");
+            };
+            document.head.appendChild(script);
+        }
 
-            reader.readAsArrayBuffer(file);
-        }).catch(err => {
-            console.error("Error loading FFmpeg.js:", err);
-            document.getElementById('status-message').innerText = "Error loading FFmpeg.js. Please try again.";
-        });
-    }
-
-    window.onload = function() {
-        captureConsole(); // Capture and redirect console logs to the UI
-        loadFFmpeg();
-
-        // Handle video upload
-        document.getElementById('upload-file').addEventListener('change', function(event) {
-            const file = event.target.files[0];
-            if (file) {
-                renameVideo(file);
+        function initializeFFmpeg() {
+            logToUI("FFmpeg.js is available!");
+            if (typeof FFmpeg === 'undefined') {
+                logToUI("FFmpeg.js is not available.");
+                showError("FFmpeg.js failed to load.");
+                return;
             }
-        });
+            logToUI("Loading FFmpeg core...");
+            loadFFmpegCore();
+        }
 
-        // Add click event listener to log-output to copy content to clipboard
-        document.getElementById('log-output').addEventListener('click', function() {
-            const logContent = document.getElementById('log-output').innerText;
+        function loadFFmpegCore() {
+            try {
+                ffmpeg.load().then(() => {
+                    logToUI("FFmpeg core loaded successfully!");
+                    setupUpload();
+                }).catch((error) => {
+                    logToUI("Error loading FFmpeg core: " + error);
+                    showError("Error loading FFmpeg core.");
+                });
+            } catch (error) {
+                logToUI("Error initializing FFmpeg.js: " + error);
+                showError("Error initializing FFmpeg.js.");
+            }
+        }
 
-            // Use the Clipboard API to copy the log content
-            navigator.clipboard.writeText(logContent).then(function() {
-                console.log("Log content copied to clipboard!");
-                alert("Log content copied to clipboard!");
-            }).catch(function(error) {
-                console.error("Failed to copy log content:", error);
-                alert("Failed to copy log content.");
+        function setupUpload() {
+            document.getElementById('upload-video').addEventListener('change', function(event) {
+                const file = event.target.files[0];
+                if (!file) {
+                    return;
+                }
+                logToUI("Uploading video: " + file.name);
+                processVideo(file);
             });
-        });
-    };
-</script>
+        }
+
+        function processVideo(file) {
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const videoData = new Uint8Array(event.target.result);
+                try {
+                    // Write the video to FFmpeg's virtual filesystem
+                    ffmpeg.FS('writeFile', 'input.mp4', videoData);
+                    logToUI("Video uploaded and ready for processing!");
+
+                    // Start FFmpeg processing: Rename the video to output.mp4
+                    logToUI("Processing video...");
+                    ffmpeg.run('-i', 'input.mp4', 'output.mp4').then(() => {
+                        logToUI("Video processed successfully!");
+
+                        // Fetch the processed video and enable download
+                        const data = ffmpeg.FS('readFile', 'output.mp4');
+                        const videoBlob = new Blob([data.buffer], { type: 'video/mp4' });
+                        const videoUrl = URL.createObjectURL(videoBlob);
+
+                        const downloadLink = document.getElementById('download-link');
+                        const downloadButton = document.getElementById('download-btn');
+                        downloadButton.href = videoUrl;
+                        downloadLink.style.display = 'block'; // Show the download link
+                    }).catch((error) => {
+                        logToUI("Error processing video: " + error);
+                        showError("Error processing video.");
+                    });
+                } catch (error) {
+                    logToUI("Error writing video file to FFmpeg: " + error);
+                    showError("Error writing video file.");
+                }
+            };
+            reader.onerror = function(error) {
+                logToUI("Error reading file: " + error);
+                showError("Error reading file.");
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function showError(message) {
+            const errorElement = document.createElement('div');
+            errorElement.style.backgroundColor = 'red';
+            errorElement.style.color = 'white';
+            errorElement.style.padding = '10px';
+            errorElement.style.margin = '10px 0';
+            errorElement.textContent = message;
+            document.body.appendChild(errorElement);
+        }
+
+        window.onload = function() {
+            loadFFmpeg();
+        };
+    </script>
 
 </body>
 </html>
