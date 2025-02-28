@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Font Awesome Icons</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 20px;
+        }
+        #style-buttons {
+            margin-bottom: 20px;
+        }
+        #style-buttons button {
+            padding: 8px 16px;
+            margin: 0 5px;
+            cursor: pointer;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background: #fff;
+        }
+        #style-buttons button.active {
+            background: #007bff;
+            color: #fff;
+            border-color: #007bff;
+        }
+        #search-container {
+            margin: 20px 0;
+        }
+        #search-container input {
+            padding: 8px 16px;
+            width: 200px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+            font-size: 16px;
+        }
+        .icon-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 15px;
+        }
+        .icon-box {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 10px;
+            width: 120px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        .icon-box i {
+            font-size: 24px;
+            margin-bottom: 5px;
+            color: #007bff;
+        }
+        .icon-box:hover {
+            background-color: #f0f0f0;
+        }
+    </style>
+</head>
+<body>
+    <h1 id="title">Font Awesome Icons</h1>
+    <div id="style-buttons">
+        <button data-style="solid" class="active">Solid</button>
+        <button data-style="regular">Regular</button>
+        <button data-style="brands">Brands</button>
+    </div>
+    <div id="search-container">
+        <input type="text" id="search-bar" placeholder="Search icons...">
+    </div>
+    <div id="icons" class="icon-container"></div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            document.querySelectorAll("#style-buttons button").forEach(btn => {
+                btn.addEventListener("click", () => {
+                    selectedStyle = btn.getAttribute("data-style");
+                    document.querySelectorAll("#style-buttons button").forEach(b => b.classList.remove("active"));
+                    btn.classList.add("active");
+
+                    filteredIconNames = allIconNames.filter(iconName => {
+                        let iconClass;
+                        if (selectedStyle === "brands") {
+                            iconClass = `fa-brands fa-${iconName}`;
+                        } else {
+                            iconClass = `fa-${selectedStyle} fa-${iconName}`;
+                        }
+                        return isValidIcon(iconClass);
+                    });
+
+                    renderIcons();
+                });
+            });
+
+            document.getElementById("search-bar").addEventListener("input", (e) => {
+                filterIcons(e.target.value);
+            });
+
+            document.getElementById("title").addEventListener("click", () => {
+                const linkTag = `<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">`;
+                console.log("Copying link tag to clipboard:", linkTag);
+                const textarea = document.createElement("textarea");
+                textarea.value = linkTag;
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand("copy");
+                document.body.removeChild(textarea);
+                alert(`Link tag copied to clipboard: ${linkTag}`);
+            });
+        });
+
+        let filteredIconNames = [];
+        let selectedStyle = "solid";
+        let iconIndex = 0;
+        let allIconNames = [];
+
+        function isValidIcon(iconClass) {
+            const testIcon = document.createElement("i");
+            testIcon.className = iconClass;
+            document.body.appendChild(testIcon);
+            const rect = testIcon.getBoundingClientRect();
+            const isVisible = rect.width > 0 && rect.height > 0 && window.getComputedStyle(testIcon).getPropertyValue('font-family') !== 'none';
+            document.body.removeChild(testIcon);
+            return isVisible;
+        }
+
+        function renderIcon(iconClass) {
+            const container = document.getElementById("icons");
+            const iconElement = document.createElement("div");
+            iconElement.className = "icon-box";
+            iconElement.innerHTML = `<i class="${iconClass}"></i><p>${iconClass}</p>`;
+
+            iconElement.addEventListener("click", () => {
+                const textarea = document.createElement("textarea");
+                textarea.value = iconClass;
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand("copy");
+                document.body.removeChild(textarea);
+                alert(`${iconClass} copied to clipboard!`);
+            });
+
+            container.appendChild(iconElement);
+        }
+
+        function processIconsAsync() {
+            if (iconIndex < filteredIconNames.length) {
+                let iconName = filteredIconNames[iconIndex];
+                let iconClass;
+                if (selectedStyle === "brands") {
+                    iconClass = `fa-brands fa-${iconName}`;
+                } else {
+                    iconClass = `fa-${selectedStyle} fa-${iconName}`;
+                }
+
+                if (isValidIcon(iconClass)) {
+                    renderIcon(iconClass);
+                }
+
+                iconIndex++;
+
+                if (window.requestIdleCallback) {
+                    requestIdleCallback(processIconsAsync);
+                } else {
+                    setTimeout(processIconsAsync, 0);
+                }
+            }
+        }
+
+        function renderIcons() {
+            const container = document.getElementById("icons");
+            container.innerHTML = "";
+            iconIndex = 0;
+
+            filteredIconNames.forEach(iconName => {
+                let iconClass;
+                if (selectedStyle === "brands") {
+                    iconClass = `fa-brands fa-${iconName}`;
+                } else {
+                    iconClass = `fa-${selectedStyle} fa-${iconName}`;
+                }
+
+                if (isValidIcon(iconClass)) {
+                    renderIcon(iconClass);
+                }
+            });
+
+            processIconsAsync();
+        }
+
+        function filterIcons(query) {
+            filteredIconNames = allIconNames.filter(iconName => iconName.toLowerCase().includes(query.toLowerCase()));
+            renderIcons();
+        }
+
+        fetch("https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css")
+            .then(response => response.text())
+            .then(css => {
+                const regex = /\.fa-[a-z0-9\-]+/g;
+                const iconClasses = [...new Set(css.match(regex))];
+                let iconNames = iconClasses.map(ic => ic.substring(1).replace(/^fa-/, ""));
+                const excluded = ["solid", "regular", "brands"];
+                allIconNames = iconNames.filter(name => !excluded.includes(name));
+
+                filteredIconNames = iconNames.filter(iconName => {
+                    let iconClass;
+                    if (selectedStyle === "brands") {
+                        iconClass = `fa-brands fa-${iconName}`;
+                    } else {
+                        iconClass = `fa-${selectedStyle} fa-${iconName}`;
+                    }
+                    return isValidIcon(iconClass);
+                });
+
+                renderIcons();
+            })
+            .catch(error => console.error("Error fetching Font Awesome CSS:", error));
+    </script>
+</body>
+</html>
