@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload and Copy SVG Content</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        #fileInput {
+            margin-bottom: 20px;
+        }
+        #svgContent {
+            width: 80%;
+            height: 300px;
+            border: 1px solid #ccc;
+            padding: 10px;
+            overflow: auto;
+            background-color: #f9f9f9;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>Upload an SVG File</h1>
+    <input type="file" id="fileInput" accept=".svg">
+    <pre id="svgContent" onclick="copyToClipboard()"></pre>
+
+    <script>
+        document.getElementById('fileInput').addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (file && file.type === 'image/svg+xml') {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const svgText = e.target.result;
+                    document.getElementById('svgContent').textContent = svgText;
+                };
+                reader.readAsText(file);
+            } else {
+                alert('Please upload a valid SVG file.');
+            }
+        });
+
+        function copyToClipboard() {
+            const svgText = document.getElementById('svgContent').textContent;
+            navigator.clipboard.writeText(svgText).then(function() {
+                alert('SVG content copied to clipboard!');
+            }).catch(function(err) {
+                alert('Failed to copy text: ', err);
+            });
+        }
+    </script>
+</body>
+</html>
