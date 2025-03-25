@@ -5,7 +5,6 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="author" content="Thomas John-Michael de Beer">
     <title>SUDOKU</title>
     <script src="https://cdn.jsdelivr.net/npm/opencv.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js"></script> 
@@ -205,6 +204,17 @@
    margin-bottom: 1rem; 
 }
 
+@keyframes pulse-opacity {
+    0% { opacity: 0.2; }
+    50% { opacity: 1; }
+    100% { opacity: 0.2; }
+}
+
+.svg-icon.pulsing svg {
+    animation: pulse-opacity 1.5s ease-in-out infinite;
+}
+    
+     
     </style>
 </head>
 <body>
@@ -666,13 +676,17 @@ function UpdateGrid(arrayofsafestates) {
 }
 
 function updateUIWithGrid(grid) {
-
     let invalidMoveDetected = false;
 
     for (let row = 0; row < GRID_SIZE; row++) {
         for (let col = 0; col < GRID_SIZE; col++) {
+            sudoku[row][col] = 0;
+        }
+    }
+
+    for (let row = 0; row < GRID_SIZE; row++) {
+        for (let col = 0; col < GRID_SIZE; col++) {
             const digit = grid[row][col];
-            
 
             if (digit >= 1 && digit <= 9) {
                 if (isValidMove(row, col, digit)) {
@@ -687,12 +701,13 @@ function updateUIWithGrid(grid) {
 
     renderBoard();
     saveState();
+   
+   svgIcon.parentElement.classList.remove('pulsing');  
 
     if (invalidMoveDetected) {
         flashRed();
-    } else {
     }
-}   
+}
 
 function getUsedValues(grid, row, col) {
     const used = new Set();
@@ -759,6 +774,23 @@ function SimpleSudokuSolver(grid) {
 const svgIcon = document.querySelector('.svg-icon svg');
 
 svgIcon.addEventListener('click', function () {
+    svgIcon.parentElement.classList.add('pulsing'); 
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = 'image/*';
+    fileInput.click();
+
+    fileInput.addEventListener('change', function () {
+        if (fileInput.files.length > 0) {
+            const img = document.getElementById('uploadedImage');
+            img.src = URL.createObjectURL(fileInput.files[0]);
+            img.onload = function () {
+                console.log('Image loaded successfully');
+                processImage(img);
+   const svgIcon = document.querySelector('.svg-icon svg');
+
+svgIcon.addEventListener('click', function () {
+    svgIcon.parentElement.classList.add('pulsing'); 
     const fileInput = document.createElement('input');
     fileInput.type = 'file';
     fileInput.accept = 'image/*';
@@ -774,6 +806,15 @@ svgIcon.addEventListener('click', function () {
             };
         } else {
             console.log('No file selected');
+   svgIcon.parentElement.classList.remove('pulsing'); 
+        }
+    });
+});
+ 
+            };
+        } else {
+            console.log('No file selected');
+   svgIcon.parentElement.classList.remove('pulsing'); 
         }
     });
 });
@@ -1023,7 +1064,7 @@ function findLargestWhiteSquareInCell(cell) {
 
     await Promise.all(promises);
 
-    updateUIWithGrid(sudokuNumbers);
+    updateUIWithGrid(sudokuNumbers);    
     return sudokuNumbers;
 }
                        
