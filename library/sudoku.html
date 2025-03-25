@@ -1074,7 +1074,15 @@ async function recognizeDigit(blob) {
     return digit.length === 1 && !isNaN(digit) ? parseInt(digit, 10) : 0;
 }
 
-
+document.addEventListener("DOMContentLoaded", function () {
+    if (typeof cv === "undefined") {
+        console.log("Waiting for OpenCV...");
+    } else {
+        cv['onRuntimeInitialized'] = function () {
+            console.log("OpenCV is ready in sudoku.html!");
+        };
+    }
+});
 </script>
 </body>
 </html>
