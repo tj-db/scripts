@@ -1,1 +1,1060 @@
-<!DOCTYPE html> <html lang="en"> <head>     <meta charset="UTF-8">     <meta name="viewport" content="width=device-width, initial-scale=1.0">     <title>SUDOKU</title>     <style>         body {             font-family: Arial, sans-serif;             font-size: 57px;             margin: 0;             background-color: #000;             color: #fff;         }          h1 {             user-select: none;             text-align: center;             margin-top: 0px;             padding: 0px 0;             opacity:0.16;             transition: opacity 1.8s ease-in-out, visibility 0s 1s;         }  button#fullscreen-button {     background: transparent;     border: none;     position: absolute;     top: 11%;     left: 0;     width: 100%;     height: 15%;     opacity: 0;     cursor: pointer; }       h1:hover {         opacity: 0.9;     }          .container {             display: flex;             flex-direction: column;             align-items: center;             margin-top: -44px;             justify-content: center;             min-height: 100vh;             padding: 0px;         }          .sudoku-board {             display: grid;             grid-template-columns: repeat(9, minmax(40px, 1fr));             gap: 7px;             max-width: 80vw;         }          .sudoku-cell {             width: 44px;             height: 44px;             text-align: center;             display: flex;             align-items: center;             justify-content: center;             font-size: 1.6rem;             border: 2px solid #ccc;             cursor: pointer;             background-color: #000;             color: #fff;             position: relative;         }          .sudoku-cell.invalid {             background-color: #000;         }          .possibilities {             position: absolute;             top: 5px;             left: 7px;             font-size: 9px;             color: #fff;             display: grid;             grid-template-columns: repeat(3, 3fr);             gap: 3px 7px;             opacity: 0.33;         }          #number-input {             display: none;             margin-top: 8px;         }          .number-button {             user-select: none;             width: 39.8px;             height: 39.8px;             font-size: 1.6rem;             margin-right: 0px;             cursor: pointer;             background-color: #000;             color: #fff;             border: none;             opacity:0.15;             transition: opacity 2.2s ease-in-out, visibility 0s 1s;          }          .number-button:hover {             opacity:0.8;             transition: opacity 0.6s ease-in-out, visibility 0s 1s;         }  @media (max-width: 768px) {     body {         user-select: none;         font-family: Arial, sans-serif;         font-size: 57px;         margin: 0;         background-color: #000;         color: #fff;     }      h1 {         user-select: none;         text-align: center;         margin-top: 15px;         padding: 0;         font-size: 72px;         letter-spacing: 10px;         opacity:0.16;         transition: opacity 1.8s ease-in-out, visibility 0s 1s;         }      h1:hover {     opacity: 0.9;     }  button#fullscreen-button {     background: transparent;     border: none;     position: absolute;     top: 14%;     left: 0;     width: 100%;     height: 15%;     opacity: 0;     cursor: pointer; }      .container {         display: flex;         flex-direction: column;         align-items: center;         justify-content: center;         min-height: 100vh;         padding: 10px;     }      .sudoku-board {         display: grid;         grid-template-columns: repeat(9, minmax(30px, 1fr));         gap: 5px;         max-width: 90vw;     }      .sudoku-cell {         width: 30px;         height: 30px;         font-size: 1rem;         border: 1px solid #ccc;     }      .sudoku-cell.invalid {         background-color: #000;/     }      .possibilities {         position: absolute;         top: 2px;         left: 5px;         font-size: 6.9px;         letter-spacing: 3px;         color: #fff;         display: grid;         grid-template-columns: repeat(3, 1fr);         gap: 1px;         opacity: 0.44;     }      #number-input {         display: none;     }      .number-button {         user-select: none;         width: 23px;         height: 16px;         font-size: 1.8rem;         margin-right: 0;         cursor: pointer;         background-color: #000;         color: #fff;         border: none;         opacity: 0.2;         transition: opacity 0.6s ease-in-out;     }      .number-button:hover {         opacity: 0.9;     } }      </style> </head> <body>     <div class="container">         <h1>SUDOKU <button id="fullscreen-button"></button></h1>         <div class="sudoku-board" id="sudoku-board"></div>         <div id="message" style="text-align: center; color: red;"></div>         <div id="number-input">             <button class="number-button" value="1"> 1</button>             <button class="number-button" value="2"> 2</button>             <button class="number-button" value="3"> 3</button>             <button class="number-button" value="4"> 4</button>             <button class="number-button" value="5"> 5</button>             <button class="number-button" value="6"> 6</button>             <button class="number-button" value="7"> 7</button>             <button class="number-button" value="8"> 8</button>             <button class="number-button" value="9"> 9</button>         </div>     </div>  <script>     const GRID_SIZE = 9;     const board = document.getElementById("sudoku-board");     const message = document.getElementById("message");     let selectedCell = null;     let invalidMove = false;     const sudoku = new Array(GRID_SIZE).fill(null).map(() => new Array(GRID_SIZE).fill(0));      for (let row = 0; row < GRID_SIZE; row++) {         for (let col = 0; col < GRID_SIZE; col++) {             const cell = document.createElement("div");             cell.classList.add("sudoku-cell");             cell.dataset.row = row;             cell.dataset.col = col;             cell.addEventListener("click", () => selectCell(row, col));             board.appendChild(cell);         }     }      function renderBoard() {         for (let row = 0; row < GRID_SIZE; row++) {             for (let col = 0; col < GRID_SIZE; col++) {                 const cell = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);                 cell.textContent = sudoku[row][col] === 0 ? "" : sudoku[row][col];                 if (sudoku[row][col] === 0) {                     const possibilities = calculatePossibilities(row, col);                     if (possibilities.length > 0) {                         const possibilitiesDiv = document.createElement("div");                         possibilitiesDiv.classList.add("possibilities");                         for (let i = 1; i <= 9; i++) {                             const possibilityItem = document.createElement("div");                             possibilityItem.textContent = possibilities.includes(i) ? i : "";                             possibilitiesDiv.appendChild(possibilityItem);                         }                         cell.appendChild(possibilitiesDiv);                     }                 }             }         }     }      function selectCell(row, col) {         selectedCell = { row, col };         renderBoard();         const numberInput = document.getElementById("number-input");         numberInput.style.display = "block";         numberInput.value = "0";     }      const numberInput = document.getElementById("number-input");     numberInput.addEventListener("change", (e) => {         if (selectedCell !== null) {             const row = selectedCell.row;             const col = selectedCell.col;             const digit = parseInt(e.target.value);             if (digit >= 1 && digit <= 9) {                 if (isValidMove(row, col, digit)) {                     sudoku[row][col] = digit;                     selectedCell = null;                     renderBoard();                     checkWin();                     saveState();                 } else {                     invalidMove = true;                     flashRed();                 }             }             numberInput.style.display = "none";         }     });      function calculatePossibilities(row, col) {         const used = new Array(10).fill(false);          for (let i = 0; i < GRID_SIZE; i++) {             used[sudoku[row][i]] = true;         }          for (let i = 0; i < GRID_SIZE; i++) {             used[sudoku[i][col]] = true;         }          const startRow = Math.floor(row / 3) * 3;         const startCol = Math.floor(col / 3) * 3;         for (let i = startRow; i < startRow + 3; i++) {             for (let j = startCol; j < startCol + 3; j++) {                 used[sudoku[i][j]] = true;             }         }         const possibilities = [];         for (let i = 1; i <= 9; i++) {             if (!used[i]) {                 possibilities.push(i);             }         }         return possibilities;     }      function clearInvalid() {         invalidMove = false;         renderBoard();     }      document.addEventListener("keydown", (e) => {         if (selectedCell !== null) {             const row = selectedCell.row;             const col = selectedCell.col;             const digit = parseInt(e.key);             if (!isNaN(digit) && digit >= 1 && digit <= 9) {                 if (isValidMove(row, col, digit)) {                     sudoku[row][col] = digit;                     selectedCell = null;                     renderBoard();                     checkWin();                     saveState();                 } else {                     invalidMove = true;                     flashRed();                 }             }         }     });      function flashRed() {         document.body.style.backgroundColor = "#fff";         setTimeout(() => {             document.body.style.backgroundColor = "#000";             clearInvalid();         }, 1000);     }      function isValidMove(row, col, digit) {         return (             !isUsedInRow(row, digit) &&             !isUsedInCol(col, digit) &&             !isUsedInGrid(row - (row % 3), col - (col % 3), digit)         );     }      function isUsedInRow(row, digit) {         return sudoku[row].includes(digit);     }      function isUsedInCol(col, digit) {         for (let row = 0; row < GRID_SIZE; row++) {             if (sudoku[row][col] === digit) {                 return true;             }         }         return false;     }      function isUsedInGrid(gridRow, gridCol, digit) {         for (let row = 0; row < 3; row++) {             for (let col = 0; col < 3; col++) {                 if (sudoku[row + gridRow][col + gridCol] === digit) {                     return true;                 }             }         }         return false;     }      function checkWin() {     }      function saveState() {         const state = JSON.parse(JSON.stringify(sudoku));         history.pushState(state, null, null);     }      window.onpopstate = function (event) {         if (event.state) {             sudoku.length = 0;             sudoku.push(...event.state);             renderBoard();         }     };      renderBoard();      const numberButtons = document.querySelectorAll(".number-button");     numberButtons.forEach((button) => {         button.addEventListener("click", handleNumberInput);     });      function handleNumberInput(e) {         if (selectedCell !== null) {             const row = selectedCell.row;             const col = selectedCell.col;             const digit = parseInt(e.target.value);             if (!isNaN(digit) && digit >= 1 && digit <= 9) {                 if (isValidMove(row, col, digit)) {                     sudoku[row][col] = digit;                     selectedCell = null;                     renderBoard();                     checkWin();                     saveState();                 } else {                     invalidMove = true;                     flashRed();                 }             }         }     }      const h1 = document.querySelector("h1");     h1.addEventListener("click", () => {         if (document.documentElement.requestFullscreen) {             document.documentElement.requestFullscreen();         } else if (document.documentElement.mozRequestFullScreen) {             document.documentElement.mozRequestFullScreen();         } else if (document.documentElement.webkitRequestFullscreen) {             document.documentElement.webkitRequestFullscreen();         } else if (document.documentElement.msRequestFullscreen) {             document.documentElement.msRequestFullscreen();         }     }); </script>  </body> </html>
+<!DOCTYPE html>
+<!-- Legal Footnote: This content is subject to copyright and should not be reproduced without permission. -->
+<!-- Written and created by Thomas John-Michael de Beer, feel free to contact me via tjdebeer@gmail.com  -->
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SUDOKU</title>
+    <script src="https://cdn.jsdelivr.net/npm/opencv.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js"></script> 
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 57px;
+            margin: 0;
+            background-color: #000;
+            color: #fff;
+            user-select: none;
+        }
+
+        h1 {
+            user-select: none;
+            text-align: center;
+            margin: auto;
+            opacity:0.16;
+            transition: opacity 1.8s ease-in-out, visibility 0s 1s;
+            user-select: none;
+        }
+
+    h1:hover {
+        opacity: 0.9;
+    }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: auto;
+   height: 90vh; 
+            justify-content: center;
+        }
+
+        .sudoku-board {
+            display: grid;
+            grid-template-columns: repeat(9, minmax(40px, 1fr));
+            gap: 7px;
+            max-width: 90vw;
+   margin: auto;  
+        }
+
+        .sudoku-cell {
+            width: 44px;
+            height: 44px;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.6rem;
+            border: 2px solid #ccc;
+            cursor: pointer;
+            background-color: #000;
+            color: #fff;
+            position: relative;
+        }
+
+        .sudoku-cell.invalid {
+            background-color: #000;
+        }
+
+        .possibilities {
+            position: absolute;
+            top: 5px;
+            left: 7px;
+            font-size: 9px;
+   line-height: 9px; 
+            color: #fff;
+            display: grid;
+            grid-template-columns: repeat(3, 3fr);
+            gap: 3px 7px;
+            opacity: 0.33;
+        }
+
+        #number-input {
+            display: none;
+            margin-top: 8px;
+        }
+
+        .number-button {
+            user-select: none;
+            width: 39.8px;
+            height: 39.8px;
+            font-size: 1.6rem;
+            margin-right: 0px;
+            cursor: pointer;
+            background-color: #000;
+            color: #fff;
+            border: none;
+            opacity:0.15;
+            transition: opacity 2.2s ease-in-out, visibility 0s 1s;
+
+        }
+
+        .number-button:hover {
+            opacity:0.8;
+            transition: opacity 0.6s ease-in-out, visibility 0s 1s;
+        }
+
+@media (max-width: 768px) {
+    body {
+        user-select: none;
+        font-family: Arial, sans-serif;
+        font-size: 57px;
+        margin: 0;
+        background-color: #000;
+        color: #fff;
+    }
+
+    h1 {
+        user-select: none;
+        text-align: center;
+        font-size: 3rem;
+        letter-spacing: 10px;
+        opacity:0.16;
+        transition: opacity 1.8s ease-in-out, visibility 0s 1s;
+        }
+
+    h1:hover {
+    opacity: 0.9;
+    }
+
+
+    .container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .sudoku-board {
+        display: grid;
+        grid-template-columns: repeat(9, minmax(30px, 1fr));
+        gap: 2px; 
+    }
+
+    .sudoku-cell {
+        width: 25px;
+        height: 25px;
+        font-size: 1rem;
+        border: 1px solid #ccc;
+    }
+
+    .sudoku-cell.invalid {
+        background-color: #000;/
+    }
+
+    .possibilities {
+        position: absolute;
+        top: 2px;
+        left: 3px;
+        font-size: 6px;
+   line-height: 6px; 
+        letter-spacing: 3px;
+        color: #fff;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1px;
+        opacity: 0.44;
+    }
+
+    #number-input {
+        display: none;
+    }
+
+    .number-button {
+        user-select: none;
+        width: 23px;
+        height: 16px;
+        font-size: 1.8rem;
+        margin-right: 0;
+        cursor: pointer;
+        background-color: #000;
+        color: #fff;
+        border: none;
+        opacity: 0.2;
+        transition: opacity 0.6s ease-in-out;
+    }
+
+    .number-button:hover {
+        opacity: 0.9;
+    }
+}
+
+.svg-icon {
+    display: inline-block;
+    user-select: none;
+}
+
+.svg-icon svg {
+    width: 3rem;
+    height: 3rem;
+    fill: white;
+   opacity: 0.2; 
+    transition: opacity 1s ease;
+   margin-bottom: 1rem; 
+}
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>SUDOKU</h1>
+        
+    <div class="svg-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+            <path d="M149.1 64.8L138.7 96 64 96C28.7 96 0 124.7 0 160L0 416c0 35.3 28.7 64 64 64l384 0c35.3 0 64-28.7 64-64l0-256c0-35.3-28.7-64-64-64l-74.7 0L362.9 64.8C356.4 45.2 338.1 32 317.4 32L194.6 32c-20.7 0-39 13.2-45.5 32.8zM256 192a96 96 0 1 1 0 192 96 96 0 1 1 0-192z"/>
+        </svg>
+    </div>
+
+ 
+        <div class="sudoku-board" id="sudoku-board"></div>
+        <div id="message" style="text-align: center; color: red;"></div>
+        <div id="number-input">
+            <button class="number-button" value="1"> 1</button>
+            <button class="number-button" value="2"> 2</button>
+            <button class="number-button" value="3"> 3</button>
+            <button class="number-button" value="4"> 4</button>
+            <button class="number-button" value="5"> 5</button>
+            <button class="number-button" value="6"> 6</button>
+            <button class="number-button" value="7"> 7</button>
+            <button class="number-button" value="8"> 8</button>
+            <button class="number-button" value="9"> 9</button>
+        </div>
+    </div>
+
+    <canvas id="canvas" style="display:none;"></canvas>
+    <img id="uploadedImage" style="display:none;" />
+
+  
+     
+<script>
+    const GRID_SIZE = 9;
+    const board = document.getElementById("sudoku-board");
+    const message = document.getElementById("message");
+    let selectedCell = null;
+    let invalidMove = false;
+    const sudoku = new Array(GRID_SIZE).fill(null).map(() => new Array(GRID_SIZE).fill(0));
+
+    for (let row = 0; row < GRID_SIZE; row++) {
+        for (let col = 0; col < GRID_SIZE; col++) {
+            const cell = document.createElement("div");
+            cell.classList.add("sudoku-cell");
+            cell.dataset.row = row;
+            cell.dataset.col = col;
+            cell.addEventListener("click", () => selectCell(row, col));
+            board.appendChild(cell);
+        }
+    }
+
+    function renderBoard() {
+        for (let row = 0; row < GRID_SIZE; row++) {
+            for (let col = 0; col < GRID_SIZE; col++) {
+                const cell = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+                cell.textContent = sudoku[row][col] === 0 ? "" : sudoku[row][col];
+                if (sudoku[row][col] === 0) {
+                    const possibilities = calculatePossibilities(row, col);
+                    if (possibilities.length > 0) {
+                        const possibilitiesDiv = document.createElement("div");
+                        possibilitiesDiv.classList.add("possibilities");
+                        for (let i = 1; i <= 9; i++) {
+                            const possibilityItem = document.createElement("div");
+                            possibilityItem.textContent = possibilities.includes(i) ? i : "";
+                            possibilitiesDiv.appendChild(possibilityItem);
+                        }
+                        cell.appendChild(possibilitiesDiv);
+                    }
+                }
+            }
+        }
+    }
+
+    function selectCell(row, col) {
+        selectedCell = { row, col };
+        renderBoard();
+        const numberInput = document.getElementById("number-input");
+        numberInput.style.display = "block";
+        numberInput.value = "0";
+    }
+
+    const numberInput = document.getElementById("number-input");
+    numberInput.addEventListener("change", (e) => {
+        if (selectedCell !== null) {
+            const row = selectedCell.row;
+            const col = selectedCell.col;
+            const digit = parseInt(e.target.value);
+            if (digit >= 1 && digit <= 9) {
+                if (isValidMove(row, col, digit)) {
+                    sudoku[row][col] = digit;
+                    selectedCell = null;
+                    renderBoard();
+                    saveState();
+                } else {
+                    invalidMove = true;
+                    flashRed();
+                }
+            }
+            numberInput.style.display = "none";
+        }
+    });
+
+    function calculatePossibilities(row, col) {
+        const used = new Array(10).fill(false);
+
+        for (let i = 0; i < GRID_SIZE; i++) {
+            used[sudoku[row][i]] = true;
+        }
+
+        for (let i = 0; i < GRID_SIZE; i++) {
+            used[sudoku[i][col]] = true;
+        }
+
+        const startRow = Math.floor(row / 3) * 3;
+        const startCol = Math.floor(col / 3) * 3;
+        for (let i = startRow; i < startRow + 3; i++) {
+            for (let j = startCol; j < startCol + 3; j++) {
+                used[sudoku[i][j]] = true;
+            }
+        }
+        const possibilities = [];
+        for (let i = 1; i <= 9; i++) {
+            if (!used[i]) {
+                possibilities.push(i);
+            }
+        }
+        return possibilities;
+    }
+
+    function clearInvalid() {
+        invalidMove = false;
+        renderBoard();
+    }
+
+    document.addEventListener("keydown", (e) => {
+        if (selectedCell !== null) {
+            const row = selectedCell.row;
+            const col = selectedCell.col;
+            const digit = parseInt(e.key);
+            if (!isNaN(digit) && digit >= 1 && digit <= 9) {
+                if (isValidMove(row, col, digit)) {
+                    sudoku[row][col] = digit;
+                    selectedCell = null;
+                    renderBoard();
+                    saveState();
+                } else {
+                    invalidMove = true;
+                    flashRed();
+                }
+            }
+        }
+    });
+
+    function flashRed() {
+        document.body.style.backgroundColor = "#fff";
+        setTimeout(() => {
+            document.body.style.backgroundColor = "#000";
+            clearInvalid();
+        }, 1000);
+    }
+
+    function isValidMove(row, col, digit) {
+        return (
+            !isUsedInRow(row, digit) &&
+            !isUsedInCol(col, digit) &&
+            !isUsedInGrid(row - (row % 3), col - (col % 3), digit)
+        );
+    }
+
+    function isUsedInRow(row, digit) {
+        return sudoku[row].includes(digit);
+    }
+
+    function isUsedInCol(col, digit) {
+        for (let row = 0; row < GRID_SIZE; row++) {
+            if (sudoku[row][col] === digit) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    function isUsedInGrid(gridRow, gridCol, digit) {
+        for (let row = 0; row < 3; row++) {
+            for (let col = 0; col < 3; col++) {
+                if (sudoku[row + gridRow][col + gridCol] === digit) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    function saveState() {
+        const state = JSON.parse(JSON.stringify(sudoku));
+        history.pushState(state, null, null);
+    }
+
+    window.onpopstate = function (event) {
+        if (event.state) {
+            sudoku.length = 0;
+            sudoku.push(...event.state);
+            renderBoard();
+        }
+    };
+
+    renderBoard();
+
+    const numberButtons = document.querySelectorAll(".number-button");
+    numberButtons.forEach((button) => {
+        button.addEventListener("click", handleNumberInput);
+    });
+
+    function handleNumberInput(e) {
+        if (selectedCell !== null) {
+            const row = selectedCell.row;
+            const col = selectedCell.col;
+            const digit = parseInt(e.target.value);
+            if (!isNaN(digit) && digit >= 1 && digit <= 9) {
+                if (isValidMove(row, col, digit)) {
+                    sudoku[row][col] = digit;
+                    selectedCell = null;
+                    renderBoard();
+                    saveState();
+                } else {
+                    invalidMove = true;
+                    flashRed();
+                }
+            }
+        }
+    }
+   
+   
+   
+   
+   
+   //RECURSIVE SOLVER LOGIC
+         
+const h1 = document.querySelector("h1");
+h1.addEventListener("click", timeToSolveSudoku);
+
+let arrayofsafestates = []
+    
+function timeToSolveSudoku() {
+    let firstgrid = [];
+
+    for (let row = 0; row < 9; row++) {
+        let rowArray = [];
+        for (let col = 0; col < 9; col++) {
+            const cell = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+            let value = cell.textContent.trim();
+
+            if (value && value.length > 1) {
+                rowArray.push(value.split(''));
+            } else if (value && value.length === 1) {
+                rowArray.push([value]);
+            } else {
+                rowArray.push([]);
+            }
+        }
+        firstgrid.push(rowArray);
+    }
+
+    SimpleSudokuSolver (firstgrid); 
+    SaveSafeState(firstgrid, null, null);
+    enterTheUnknown(arrayofsafestates);
+    let finalState = arrayofsafestates[arrayofsafestates.length - 1];
+    let [finalgrid, finalcoordinates, finalfewestMultipleEntriesArray] = finalState;
+
+    updateUIWithGrid(finalgrid);
+    }
+
+     
+function enterTheUnknown(arrayofsafestates) {  
+    
+    let latestState = arrayofsafestates[arrayofsafestates.length - 1];
+    let [grid, coordinates, fewestMultipleEntriesArray] = latestState;
+
+    if (coordinates === null && fewestMultipleEntriesArray === null) {
+        let result = findFewest(grid);
+        if (result.fewestMultipleEntriesArray === null) {
+            console.log("Fin:", grid);
+        } else {
+            SaveSafeState(grid, result.coordinates, result.fewestMultipleEntriesArray);
+   
+            SaveSafeState(grid, result.coordinates, result.fewestMultipleEntriesArray); 
+
+            enterTheInfinite(arrayofsafestates);
+        }
+    } else {
+    }
+}
+
+function enterTheInfinite(arrayofsafestates) {
+    
+console.log("check:", JSON.parse(JSON.stringify(arrayofsafestates))); 
+    
+    let latestState = arrayofsafestates[arrayofsafestates.length - 1];        
+    let [grid2, coordinates2, fewestMultipleEntriesArray2] = latestState;  
+
+        if (fewestMultipleEntriesArray2.length === 0) {
+            deleteCurrentArray(arrayofsafestates);
+            reduceOptions(arrayofsafestates);
+            enterTheInfinite(arrayofsafestates);
+        } else {
+
+    SaveSafeState(grid2, coordinates2, fewestMultipleEntriesArray2);
+    let currentgridin = UpdateGrid(arrayofsafestates); 
+    let currentgridin2 = SimpleSudokuSolver(currentgridin); 
+    let integrity = gridIntegrity(currentgridin2);
+    
+    if (integrity === "bad") {
+
+        deleteCurrentArray(arrayofsafestates);
+        reduceOptions(arrayofsafestates);
+ 
+
+        if (fewestMultipleEntriesArray2.length === 0) {
+   
+            deleteCurrentArray(arrayofsafestates);
+            reduceOptions(arrayofsafestates);
+            enterTheInfinite(arrayofsafestates);
+        } else { 
+            enterTheInfinite(arrayofsafestates);
+        }
+    } else {
+            let result = findFewest((SimpleSudokuSolver(UpdateGrid(arrayofsafestates))));
+
+        if (result.fewestMultipleEntriesArray === null) {
+
+            SaveSafeState((SimpleSudokuSolver(UpdateGrid(arrayofsafestates))), null, null); 
+        } else {
+
+            SaveSafeState((SimpleSudokuSolver(UpdateGrid(arrayofsafestates))), result.coordinates, result.fewestMultipleEntriesArray);
+            enterTheInfinite(arrayofsafestates);
+        }
+    }
+  }
+}
+
+
+function gridIntegrity(grid) {  
+
+    for (let row = 0; row < 9; row++) {
+        for (let col = 0; col < 9; col++) {
+            let cell = grid[row    ][col];
+
+            if (!cell || cell.length === 0) {
+                return "bad";
+            }
+        }
+    }
+
+    return "good";
+}
+    
+//function SaveSafeState(grid, coordinates, fewestMultipleEntriesArray) {
+//    const gridCopy = grid.map(row => row.slice());
+//    arrayofsafestates.push([gridCopy, coordinates, fewestMultipleEntriesArray]);
+//}
+   
+   function SaveSafeState(grid, coordinates, fewestMultipleEntriesArray) {
+    const gridCopy = JSON.parse(JSON.stringify(grid));
+    arrayofsafestates.push([gridCopy, coordinates, fewestMultipleEntriesArray]);
+}
+      
+       
+function deleteCurrentArray(arrayofsafestates) {
+    if (!arrayofsafestates || arrayofsafestates.length === 0) {
+        return;
+    }
+    arrayofsafestates.pop();
+}
+
+function reduceOptions(arrayofsafestates) {
+    if (!arrayofsafestates || arrayofsafestates.length === 0) {
+
+        return null;
+    }
+
+    let latestState = arrayofsafestates[arrayofsafestates.length - 1];
+
+    if (!latestState || latestState.length < 3) {
+        return null;
+    }
+
+    let [grid, coordinates, fewestMultipleEntriesArray] = latestState;
+
+    if (!fewestMultipleEntriesArray || fewestMultipleEntriesArray.length === 0) {
+        return null;
+    }
+    fewestMultipleEntriesArray.shift();
+    return fewestMultipleEntriesArray;
+}
+    
+function UpdateGrid(arrayofsafestates) {
+    if (!arrayofsafestates || arrayofsafestates.length === 0) {
+        return;
+    }
+
+    let latestState = arrayofsafestates[arrayofsafestates.length - 1];
+
+    if (!latestState || latestState.length < 3) {
+        return;
+    }
+
+    let [grid, coordinates, fewestMultipleEntriesArray] = latestState;
+
+    if (!grid || !coordinates || !fewestMultipleEntriesArray || fewestMultipleEntriesArray.length === 0) {
+        return;
+    }
+
+    let gridCopy = JSON.parse(JSON.stringify(grid));
+
+    let chosenValue = fewestMultipleEntriesArray[0];
+    gridCopy[coordinates.row][coordinates.col] = [chosenValue];
+
+    gridCopy[coordinates.row] = gridCopy[coordinates.row].map((cell, colIndex) =>
+        colIndex === coordinates.col ? cell : cell.filter(val => val !== chosenValue)
+    );
+
+    for (let row = 0; row < 9; row++) {
+        if (row !== coordinates.row) {
+            gridCopy[row][coordinates.col] = gridCopy[row][coordinates.col].filter(val => val !== chosenValue);
+        }
+    }
+
+    const startRow = Math.floor(coordinates.row / 3) * 3;
+    const startCol = Math.floor(coordinates.col / 3) * 3;
+
+    for (let i = startRow; i < startRow + 3; i++) {
+        for (let j = startCol; j < startCol + 3; j++) {
+            if (i !== coordinates.row || j !== coordinates.col) {
+                gridCopy[i][j] = gridCopy[i][j].filter(val => val !== chosenValue);
+            }
+        }
+    }
+    return gridCopy;
+}
+   
+     function findFewest(grid) {
+    let fewestMultipleEntriesArray = null;
+    let fewestMultipleEntriesCount = Infinity;
+    let coordinates = null;
+
+    for (let row = 0; row < grid.length; row++) {
+        for (let col = 0; col < grid[row].length; col++) {
+            let cell = grid[row][col];
+    
+            if (cell.length > 1 && cell.length < fewestMultipleEntriesCount) {
+                fewestMultipleEntriesCount = cell.length;
+                fewestMultipleEntriesArray = cell;
+                coordinates = { row, col };
+            }
+        }
+    }
+    return { coordinates, fewestMultipleEntriesArray };
+}
+
+function updateUIWithGrid(grid) {
+
+    let invalidMoveDetected = false;
+
+    for (let row = 0; row < GRID_SIZE; row++) {
+        for (let col = 0; col < GRID_SIZE; col++) {
+            const digit = grid[row][col];
+            
+
+            if (digit >= 1 && digit <= 9) {
+                if (isValidMove(row, col, digit)) {
+                    sudoku[row][col] = digit;
+                } else {
+                    invalidMoveDetected = true;
+                    console.warn(`❌ Invalid move: ${digit} at (${row}, ${col})`);
+                }
+            }
+        }
+    }
+
+    renderBoard();
+    saveState();
+
+    if (invalidMoveDetected) {
+        flashRed();
+    } else {
+    }
+}   
+
+function getUsedValues(grid, row, col) {
+    const used = new Set();
+
+    for (let c = 0; c < 9; c++) {
+        if (grid[row][c].length === 1) {
+            used.add(grid[row][c][0]);
+        }
+    }
+
+    for (let r = 0; r < 9; r++) {
+        if (grid[r][col].length === 1) {
+            used.add(grid[r][col][0]);
+        }
+    }
+
+    const startRow = Math.floor(row / 3) * 3;
+    const startCol = Math.floor(col / 3) * 3;
+    for (let r = startRow; r < startRow + 3; r++) {
+        for (let c = startCol; c < startCol + 3; c++) {
+            if (grid[r][c].length === 1) {
+                used.add(grid[r][c][0]);
+            }
+        }
+    }
+
+    return used;
+}
+
+function SimpleSudokuSolver(grid) {
+    let madeChanges = false;
+
+    let gridCopy = grid.map(row => row.slice());
+
+    for (let row = 0; row < 9; row++) {
+        for (let col = 0; col < 9; col++) {
+            if (gridCopy[row][col].length > 1) {
+                const usedValues = getUsedValues(gridCopy, row, col);
+                const possibleValues = gridCopy[row][col];
+
+                const updatedValues = possibleValues.filter(value => !usedValues.has(value));
+
+                if (updatedValues.length < possibleValues.length) {
+                    gridCopy[row][col] = updatedValues;
+                    madeChanges = true;
+                }
+            }
+        }
+    }
+
+    if (madeChanges) {
+        SimpleSudokuSolver(gridCopy);
+    } else {
+    }
+
+    return gridCopy;
+}
+
+   
+   
+      
+   //OPENCV AND TESSERACT LOGIC
+
+const svgIcon = document.querySelector('.svg-icon svg');
+
+svgIcon.addEventListener('click', function () {
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = 'image/*';
+    fileInput.click();
+
+    fileInput.addEventListener('change', function () {
+        if (fileInput.files.length > 0) {
+            const img = document.getElementById('uploadedImage');
+            img.src = URL.createObjectURL(fileInput.files[0]);
+            img.onload = function () {
+                console.log('Image loaded successfully');
+                processImage(img);
+            };
+        } else {
+            console.log('No file selected');
+        }
+    });
+});
+
+function processImage(img) {
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+
+    const maxWidth = 1024;
+    const maxHeight = 1024;
+    let width = img.width;
+    let height = img.height;
+
+    if (width > maxWidth || height > maxHeight) {
+        const scale = Math.min(maxWidth / width, maxHeight / height);
+        width *= scale;
+        height *= scale;
+    }
+
+    canvas.width = width;
+    canvas.height = height;
+    ctx.drawImage(img, 0, 0, width, height);
+
+
+    let src = cv.imread(canvas);
+
+    let gray = new cv.Mat();
+    cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+    let blurred = new cv.Mat();
+    cv.GaussianBlur(gray, blurred, new cv.Size(5, 5), 0);
+
+    let threshold = new cv.Mat();
+    cv.adaptiveThreshold(
+        blurred,
+        threshold,
+        255,
+        cv.ADAPTIVE_THRESH_GAUSSIAN_C,
+        cv.THRESH_BINARY_INV,
+        11,
+        2
+    );
+
+    let contours = new cv.MatVector();
+    let hierarchy = new cv.Mat();
+    cv.findContours(threshold, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+
+    let largestContour = findLargestSquare(contours);
+    if (!largestContour) {
+        console.error("No valid Sudoku grid found.");
+        return;
+    }
+
+    let approx = new cv.Mat();
+    cv.approxPolyDP(largestContour, approx, 0.02 * cv.arcLength(largestContour, true), true);
+
+    if (approx.rows !== 4) {
+        console.error("Sudoku grid was not detected properly.");
+        return;
+    }
+
+    let sortedPoints = sortCornerPoints(approx);
+    let warped = warpPerspective(src, sortedPoints);
+
+    extractGridSquares(warped);
+
+    src.delete();
+    gray.delete();
+    blurred.delete();
+    threshold.delete();
+    contours.delete();
+    hierarchy.delete();
+    largestContour.delete();
+    approx.delete();
+}
+
+function findLargestSquare(contours) {
+    let maxArea = 0;
+    let largestContour = null;
+
+    for (let i = 0; i < contours.size(); i++) {
+        let contour = contours.get(i);
+        let area = cv.contourArea(contour);
+        let peri = cv.arcLength(contour, true);
+        let approx = new cv.Mat();
+        cv.approxPolyDP(contour, approx, 0.02 * peri, true);
+
+        if (area > maxArea && approx.rows === 4) {
+            maxArea = area;
+            largestContour = contour.clone();
+        }
+        approx.delete();
+    }
+
+    return largestContour;
+}
+
+function sortCornerPoints(approx) {
+    let points = [];
+    for (let i = 0; i < 4; i++) {
+        points.push({ x: approx.data32S[i * 2], y: approx.data32S[i * 2 + 1] });
+    }
+
+    points.sort((a, b) => a.x + a.y - (b.x + b.y));
+
+    let topLeft = points[0];
+    let bottomRight = points[3];
+    let topRight = points[1].x > points[2].x ? points[1] : points[2];
+    let bottomLeft = points[1].x < points[2].x ? points[1] : points[2];
+
+    return [topLeft, topRight, bottomRight, bottomLeft];
+}
+
+function warpPerspective(src, points) {
+    let size = 900;
+    let dstMat = cv.matFromArray(4, 1, cv.CV_32FC2, [
+        0, 0, size, 0, size, size, 0, size
+    ]);
+
+    let srcMat = cv.matFromArray(4, 1, cv.CV_32FC2, [
+        points[0].x, points[0].y,
+        points[1].x, points[1].y,
+        points[2].x, points[2].y,
+        points[3].x, points[3].y
+    ]);
+
+    let M = cv.getPerspectiveTransform(srcMat, dstMat);
+    let dst = new cv.Mat();
+    cv.warpPerspective(src, dst, M, new cv.Size(size, size));
+
+    srcMat.delete();
+    dstMat.delete();
+    M.delete();
+
+    return dst;
+}
+
+function findLargestWhiteSquareInCell(cell) {
+    let gray = new cv.Mat();
+    cv.cvtColor(cell, gray, cv.COLOR_RGBA2GRAY);
+
+    let threshold = new cv.Mat();
+    cv.adaptiveThreshold(
+        gray,
+        threshold,
+        222,
+        cv.ADAPTIVE_THRESH_GAUSSIAN_C,
+        cv.THRESH_BINARY,
+        15,
+        5
+    );
+
+    let contours = new cv.MatVector();
+    let hierarchy = new cv.Mat();
+    cv.findContours(threshold, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+
+    let largestContour = null;
+    let maxArea = 0;
+
+    for (let i = 0; i < contours.size(); i++) {
+        let contour = contours.get(i);
+        let area = cv.contourArea(contour);
+        if (area > maxArea) {
+            let approx = new cv.Mat();
+            let peri = cv.arcLength(contour, true);
+            cv.approxPolyDP(contour, approx, 0.02 * peri, true);
+
+            if (approx.rows === 4) {
+                maxArea = area;
+                largestContour = contour.clone();
+            }
+
+            approx.delete();
+        }
+    }
+
+    if (!largestContour) {
+        return new cv.Rect(0, 0, cell.cols, cell.rows);
+    }
+
+    let rect = cv.boundingRect(largestContour);
+
+    let zoomedRect = new cv.Rect(
+        Math.max(0, rect.x + 5),
+        Math.max(0, rect.y + 5),
+        Math.max(0, rect.width - 10),
+        Math.max(0, rect.height - 10)
+    );
+
+    contours.delete();
+    hierarchy.delete();
+    gray.delete();
+    threshold.delete();
+
+    return zoomedRect;
+}
+
+   
+   async function extractGridSquares(grid) {
+    let size = 900;
+    let cellSize = size / 9;
+    let outputSize = 64;
+    let margin = 25;
+
+    let sudokuNumbers = Array(9).fill().map(() => Array(9).fill([]));
+
+    const promises = [];
+
+    for (let row = 0; row < 9; row++) {
+        for (let col = 0; col < 9; col++) {
+            let x = col * cellSize - margin;
+            let y = row * cellSize - margin;
+            let rect = new cv.Rect(x, y, cellSize + 2 * margin, cellSize + 2 * margin);
+
+            if (x < 0) rect.x = 0;
+            if (y < 0) rect.y = 0;
+            if (x + rect.width > grid.cols) rect.width = grid.cols - x;
+            if (y + rect.height > grid.rows) rect.height = grid.rows - y;
+
+            let square = grid.roi(rect);
+            let largestSquare = findLargestWhiteSquareInCell(square);
+            let croppedSquare = square.roi(largestSquare);
+
+            let resized = new cv.Mat();
+            cv.resize(croppedSquare, resized, new cv.Size(outputSize, outputSize));
+
+            let brightened = new cv.Mat();
+            cv.convertScaleAbs(resized, brightened, 1, 50);
+
+            let contrasted = new cv.Mat();
+            cv.convertScaleAbs(brightened, contrasted, 1.5, 0);
+
+            promises.push(
+                matToBlob(contrasted).then(async (blob) => {
+                    let recognizedNumber = await recognizeDigit(blob);
+
+                    sudokuNumbers[row][col] = recognizedNumber === 0 ? [null] : [recognizedNumber];
+
+                    square.delete();
+                    croppedSquare.delete();
+                    resized.delete();
+                    brightened.delete();
+                    contrasted.delete();
+                })
+            );
+        }
+    }
+
+    await Promise.all(promises);
+
+    updateUIWithGrid(sudokuNumbers);
+    return sudokuNumbers;
+}
+                       
+function matToBlob(mat) {
+    return new Promise((resolve) => {
+        let canvas = document.createElement('canvas');
+        canvas.width = mat.cols;
+        canvas.height = mat.rows;
+        let ctx = canvas.getContext('2d');
+
+        let imgData = new ImageData(new Uint8ClampedArray(mat.data), mat.cols, mat.rows);
+        ctx.putImageData(imgData, 0, 0);
+
+        canvas.toBlob((blob) => resolve(blob), 'image/png');
+    });
+}
+
+async function recognizeDigit(blob) {
+    const { data: { text } } = await Tesseract.recognize(
+        blob,
+        'eng',
+        {
+            tessedit_char_whitelist: '123456789',
+            classify_bln_numeric_mode: 1
+        }
+    );
+
+    let digit = text.trim();
+    return digit.length === 1 && !isNaN(digit) ? parseInt(digit, 10) : 0;
+}
+
+
+</script>
+</body>
+</html>
