@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF OCR Extractor</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/4.0.2/tesseract.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; margin: 20px; }
+        input { margin: 10px 0; }
+        textarea { width: 90%; height: 300px; margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <h2>Upload a PDF to Extract Text</h2>
+    <input type="file" id="fileInput" accept="application/pdf">
+    <p id="status"></p>
+    <textarea id="outputText" placeholder="Extracted text will appear here..." readonly></textarea>
+
+    <script>
+        // Set PDF.js worker source to prevent deprecated API warning
+        pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js";
+
+        document.getElementById('fileInput').addEventListener('change', async function(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            document.getElementById('status').innerText = "Processing PDF...";
+            const reader = new FileReader();
+            
+            reader.onload = async function() {
+                const pdfData = new Uint8Array(reader.result);
+                const pdf = await pdfjsLib.getDocument({ data: pdfData }).promise;
+                let extractedText = '';
+
+                for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+                    const page = await pdf.getPage(pageNum);
+                    const scale = 2;
+                    const viewport = page.getViewport({ scale });
+
+                    const canvas = document.createElement("canvas");
+                    const context = canvas.getContext("2d");
+                    canvas.width = viewport.width;
+                    canvas.height = viewport.height;
+
+                    await page.render({ canvasContext: context, viewport }).promise;
+
+                    document.getElementById('status').innerText = `Processing page ${pageNum} of ${pdf.numPages}...`;
+                    const imgData = canvas.toDataURL("image/png");
+
+                    // Perform OCR on the image
+                    const ocrResult = await Tesseract.recognize(imgData, 'eng');
+                    extractedText += ocrResult.data.text + "\n\n";
+                }
+
+                document.getElementById('outputText').value = extractedText;
+                document.getElementById('status').innerText = "Processing complete!";
+            };
+
+            reader.readAsArrayBuffer(file);
+        });
+    </script>
+</body>
+</html>
