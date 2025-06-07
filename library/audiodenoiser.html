@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Simple Noise Reducer</title>
+</head>
+<body>
+<h2>Upload WAV to reduce background noise</h2>
+<input type="file" id="audiofile" accept=".wav" />
+<button id="processBtn" disabled>Process and Download</button>
+
+<script>
+  const fileInput = document.getElementById('audiofile');
+  const processBtn = document.getElementById('processBtn');
+  let audioBuffer = null;
+  let audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+  fileInput.addEventListener('change', async () => {
+    const file = fileInput.files[0];
+    if (!file) return;
+    if (file.type !== 'audio/wav' && file.name.split('.').pop().toLowerCase() !== 'wav') {
+      alert('Please upload a WAV file.');
+      return;
+    }
+    const arrayBuffer = await file.arrayBuffer();
+    audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+    processBtn.disabled = false;
+  });
+
+  processBtn.addEventListener('click', () => {
+    if (!audioBuffer) return;
+
+    // Simple noise gate parameters
+    const threshold = 0.02; // amplitude below this is silenced
+    const processedBuffer = audioContext.createBuffer(
+      audioBuffer.numberOfChannels,
+      audioBuffer.length,
+      audioBuffer.sampleRate
+    );
+
+    for (let channel = 0; channel < audioBuffer.numberOfChannels; channel++) {
+      const inputData = audioBuffer.getChannelData(channel);
+      const outputData = processedBuffer.getChannelData(channel);
+
+      for (let i = 0; i < inputData.length; i++) {
+        // If the sample is below threshold, reduce it to near zero
+        outputData[i] = Math.abs(inputData[i]) < threshold ? 0 : inputData[i];
+      }
+    }
+
+    // Export processedBuffer to WAV and trigger download
+    exportWAV(processedBuffer);
+  });
+
+  // WAV encoder function adapted from https://stackoverflow.com/a/19360490
+  function exportWAV(buffer) {
+    const numChannels = buffer.numberOfChannels;
+    const sampleRate = buffer.sampleRate;
+    const format = 1; // PCM
+    const bitDepth = 16;
+
+    let samples;
+    if (numChannels === 2) {
+      const left = buffer.getChannelData(0);
+      const right = buffer.getChannelData(1);
+      samples = interleave(left, right);
+    } else {
+      samples = buffer.getChannelData(0);
+    }
+
+    const dataLength = samples.length * (bitDepth / 8);
+    const bufferLength = 44 + dataLength;
+    const arrayBuffer = new ArrayBuffer(bufferLength);
+    const view = new DataView(arrayBuffer);
+
+    // Write WAV header
+    writeString(view, 0, 'RIFF');
+    view.setUint32(4, 36 + dataLength, true);
+    writeString(view, 8, 'WAVE');
+    writeString(view, 12, 'fmt ');
+    view.setUint32(16, 16, true); // Subchunk1Size (16 for PCM)
+    view.setUint16(20, format, true); // AudioFormat (1 PCM)
+    view.setUint16(22, numChannels, true);
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, sampleRate * numChannels * bitDepth / 8, true); // ByteRate
+    view.setUint16(32, numChannels * bitDepth / 8, true); // BlockAlign
+    view.setUint16(34, bitDepth, true);
+    writeString(view, 36, 'data');
+    view.setUint32(40, dataLength, true);
+
+    // Write samples
+    floatTo16BitPCM(view, 44, samples);
+
+    // Create blob and download
+    const blob = new Blob([view], { type: 'audio/wav' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.style.display = 'none';
+    a.href = url;
+    a.download = 'noise_reduced.wav';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 100);
+  }
+
+  function writeString(view, offset, string) {
+    for (let i = 0; i < string.length; i++) {
+      view.setUint8(offset + i, string.charCodeAt(i));
+    }
+  }
+
+  function floatTo16BitPCM(output, offset, input) {
+    for (let i = 0; i < input.length; i++, offset += 2) {
+      let s = Math.max(-1, Math.min(1, input[i]));
+      s = s < 0 ? s * 0x8000 : s * 0x7FFF;
+      output.setInt16(offset, s, true);
+    }
+  }
+
+  function interleave(inputL, inputR) {
+    const length = inputL.length + inputR.length;
+    const result = new Float32Array(length);
+
+    let index = 0;
+    let inputIndex = 0;
+
+    while (index < length) {
+      result[index++] = inputL[inputIndex];
+      result[index++] = inputR[inputIndex];
+      inputIndex++;
+    }
+    return result;
+  }
+</script>
+</body>
+</html>
