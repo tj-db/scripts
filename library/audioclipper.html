@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Clip MP3 Segment</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 2em;
+      background: #f0e4d7;
+    }
+    input, button {
+      font-size: 1.1em;
+      margin: 0.5em 0;
+    }
+    label {
+      display: block;
+      margin-top: 1em;
+    }
+  </style>
+</head>
+<body>
+  <h1>Clip MP3 Segment</h1>
+  <input type="file" id="fileInput" accept="audio/mp3,audio/*" />
+  <label>
+    Start time (seconds):
+    <input type="number" id="startTime" value="11" min="0" step="0.1" />
+  </label>
+  <label>
+    End time (seconds):
+    <input type="number" id="endTime" value="15" min="0" step="0.1" />
+  </label>
+  <button id="clipBtn" disabled>Clip & Download</button>
+
+  <script>
+    const fileInput = document.getElementById("fileInput");
+    const clipBtn = document.getElementById("clipBtn");
+    const startTimeInput = document.getElementById("startTime");
+    const endTimeInput = document.getElementById("endTime");
+
+    let audioBuffer = null;
+    const context = new (window.AudioContext || window.webkitAudioContext)();
+
+    fileInput.addEventListener("change", async () => {
+      const file = fileInput.files[0];
+      if (!file) return;
+
+      const arrayBuffer = await file.arrayBuffer();
+      audioBuffer = await context.decodeAudioData(arrayBuffer);
+      clipBtn.disabled = false;
+    });
+
+    clipBtn.addEventListener("click", () => {
+      if (!audioBuffer) return;
+
+      let start = parseFloat(startTimeInput.value);
+      let end = parseFloat(endTimeInput.value);
+
+      if (isNaN(start) || isNaN(end) || start < 0 || end <= start || end > audioBuffer.duration) {
+        alert("Please enter valid start and end times within audio duration.");
+        return;
+      }
+
+      const sampleRate = audioBuffer.sampleRate;
+      const frameStart = Math.floor(start * sampleRate);
+      const frameEnd = Math.floor(end * sampleRate);
+      const clippedLength = frameEnd - frameStart;
+
+      const clippedBuffer = context.createBuffer(
+        audioBuffer.numberOfChannels,
+        clippedLength,
+        sampleRate
+      );
+
+      for (let channel = 0; channel < audioBuffer.numberOfChannels; channel++) {
+        const data = audioBuffer.getChannelData(channel);
+        clippedBuffer.copyToChannel(data.slice(frameStart, frameEnd), channel);
+      }
+
+      exportWav(clippedBuffer);
+    });
+
+    function exportWav(buffer) {
+      const numChannels = buffer.numberOfChannels;
+      const sampleRate = buffer.sampleRate;
+      const length = buffer.length * numChannels * 2;
+      const wavBuffer = new ArrayBuffer(44 + length);
+      const view = new DataView(wavBuffer);
+
+      function writeString(view, offset, str) {
+        for (let i = 0; i < str.length; i++) {
+          view.setUint8(offset + i, str.charCodeAt(i));
+        }
+      }
+
+      let offset = 0;
+
+      writeString(view, offset, 'RIFF'); offset += 4;
+      view.setUint32(offset, 36 + length, true); offset += 4;
+      writeString(view, offset, 'WAVE'); offset += 4;
+      writeString(view, offset, 'fmt '); offset += 4;
+      view.setUint32(offset, 16, true); offset += 4;
+      view.setUint16(offset, 1, true); offset += 2;
+      view.setUint16(offset, numChannels, true); offset += 2;
+      view.setUint32(offset, sampleRate, true); offset += 4;
+      view.setUint32(offset, sampleRate * numChannels * 2, true); offset += 4;
+      view.setUint16(offset, numChannels * 2, true); offset += 2;
+      view.setUint16(offset, 16, true); offset += 2;
+      writeString(view, offset, 'data'); offset += 4;
+      view.setUint32(offset, length, true); offset += 4;
+
+      for (let i = 0; i < buffer.length; i++) {
+        for (let channel = 0; channel < numChannels; channel++) {
+          let sample = buffer.getChannelData(channel)[i];
+          sample = Math.max(-1, Math.min(1, sample));
+          view.setInt16(offset, sample * 0x7fff, true);
+          offset += 2;
+        }
+      }
+
+      const blob = new Blob([view], { type: 'audio/wav' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'clipped_audio.wav';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+  </script>
+</body>
+</html>
